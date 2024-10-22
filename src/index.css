@@ -17,4 +17,15 @@
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
   }
+  .slot-item {
+    font-size: 0.9rem;
+    padding: 0.2rem 0;
+  }
   
+  .slot-item.available {
+    color: green;
+  }
+  
+  .slot-item.reserved {
+    color: red;
+  }

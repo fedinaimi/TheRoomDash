@@ -1,4 +1,3 @@
-// src/pages/ReservationsPage.js
 import React, { useState, useEffect } from 'react';
 import {
   getAllReservations,
@@ -64,9 +63,13 @@ const ReservationsPage = () => {
                 <td className="px-4 py-2 border">{reservation.name}</td>
                 <td className="px-4 py-2 border">{reservation.email}</td>
                 <td className="px-4 py-2 border">{reservation.phone}</td>
-                <td className="px-4 py-2 border">{reservation.scenario.name}</td>
-                <td className="px-4 py-2 border">{reservation.chapter.name}</td>
-                <td className="px-4 py-2 border">{reservation.timeSlot.startTime}</td>
+                <td className="px-4 py-2 border">{reservation.scenario?.name || 'N/A'}</td>
+                <td className="px-4 py-2 border">{reservation.chapter?.name || 'N/A'}</td>
+                <td className="px-4 py-2 border">
+                  {reservation.timeSlot
+                    ? `${reservation.timeSlot.startTime} - ${reservation.timeSlot.endTime}`
+                    : 'No time slot'}
+                </td>
                 <td className="px-4 py-2 border">{reservation.status}</td>
                 <td className="px-4 py-2 border flex space-x-2">
                   <button

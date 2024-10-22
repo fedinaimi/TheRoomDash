@@ -4,6 +4,7 @@ import axiosInstance from './axiosInstance'; // Assume axiosInstance is set up w
 export const getAllChapters = async () => {
   const response = await axiosInstance.get('/chapters');
   return response.data;
+  console.log(response.data)
 };
 
 // Create a new chapter

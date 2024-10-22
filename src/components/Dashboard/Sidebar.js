@@ -33,13 +33,6 @@ const Sidebar = () => {
             Reservation
           </Link>
           <Link
-            to="/dashboard/timeslots"
-            className="flex items-center p-4 hover:bg-indigo-500 transition-colors"
-          >
-            <FaHourglassStart className="mr-3" />
-            Time Slot
-          </Link>
-          <Link
             to="/dashboard/users"
             className="flex items-center p-4 hover:bg-indigo-500 transition-colors"
           >
@@ -60,6 +53,14 @@ const Sidebar = () => {
             <FaFileAlt className="mr-3" />
             Chapters
           </Link>
+          <Link
+            to="/dashboard/timeslots"
+            className="flex items-center p-4 hover:bg-indigo-500 transition-colors"
+          >
+            <FaHourglassStart className="mr-3" />
+            Time Slot
+          </Link>
+         
         </nav>
       </div>
 
