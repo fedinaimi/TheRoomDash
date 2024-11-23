@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { getAllTimeSlotsByScenario, createTimeSlots, deleteTimeSlot, updateTimeSlot, toggleAvailability } from '../services/timeSlotService';
+import {
+  getAllTimeSlotsByScenario,
+  createTimeSlots,
+  deleteTimeSlot,
+  updateTimeSlot,
+  toggleAvailability,
+} from '../services/timeSlotService';
 import { getAllScenarios } from '../services/scenarioService';
 import { FaTrash, FaEdit, FaEye, FaToggleOn, FaToggleOff, FaPlus } from 'react-icons/fa';
 import Modal from 'react-modal';
@@ -64,7 +70,16 @@ const TimeSlotPage = () => {
           getDate(slotDate) === selectedDay
         );
       });
-      setTimeSlots(filteredSlots);
+
+      // Format slots for display
+      const formattedSlots = filteredSlots.map((slot) => ({
+        ...slot,
+        formattedDate: format(parseISO(slot.date), 'MMMM d, yyyy'),
+        formattedStartTime: format(parseISO(slot.startTime), 'hh:mm a'),
+        formattedEndTime: format(parseISO(slot.endTime), 'hh:mm a'),
+      }));
+
+      setTimeSlots(formattedSlots);
       setIsDetailVisible(true);
     } catch (err) {
       console.error('Error fetching time slots:', err);
@@ -95,7 +110,6 @@ const TimeSlotPage = () => {
     }
   };
 
-  // Handle opening and closing the Add Slot Modal
   const handleAddSlotModal = () => {
     setIsAddModalOpen(true);
   };
@@ -199,7 +213,7 @@ const TimeSlotPage = () => {
         </tbody>
       </table>
 
-      {/* Date Selectors */}
+      {/* Date Selection */}
       <div className="mt-4 flex space-x-4">
         <div>
           <label className="block mb-2 font-semibold">Select Year</label>
@@ -263,9 +277,9 @@ const TimeSlotPage = () => {
             <tbody>
               {timeSlots.map((slot) => (
                 <tr key={slot._id} className="hover:bg-gray-100 transition duration-200">
-                  <td className="px-4 py-2 border">{format(parseISO(slot.date), 'MMMM d, yyyy')}</td>
-                  <td className="px-4 py-2 border">{slot.startTime}</td>
-                  <td className="px-4 py-2 border">{slot.endTime}</td>
+                  <td className="px-4 py-2 border">{slot.formattedDate}</td>
+                  <td className="px-4 py-2 border">{slot.formattedStartTime}</td>
+                  <td className="px-4 py-2 border">{slot.formattedEndTime}</td>
                   <td className="px-4 py-2 border">
                     {slot.isAvailable ? (
                       <span className="text-green-600">Available</span>
