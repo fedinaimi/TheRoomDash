@@ -25,11 +25,14 @@ export const createTimeSlots = async (scenarioId, dateRange, weekdayTime, weeken
   return response.data;
 };
 export const toggleAvailability = async (timeSlotId, isAvailable) => {
-  const response = await axiosInstance.put(`/timeSlots/${timeSlotId}/toggle-availability`, {
+  console.log('API Request:', { timeSlotId, isAvailable }); // Debugging request
+  const response = await axiosInstance.put(`/timeslots/${timeSlotId}/toggle-availability`, {
     isAvailable,
   });
   return response.data;
 };
+
+
 
 // Get available time slots for a scenario by date (public access)
 export const getTimeSlotsByDate = async (scenarioId, date) => {
@@ -39,7 +42,7 @@ export const getTimeSlotsByDate = async (scenarioId, date) => {
 
 // Get all time slots for a specific scenario (admin access)
 export const getAllTimeSlotsByScenario = async (scenarioId) => {
-  const response = await axiosInstance.get(`/timeSlots/scenario/${scenarioId}`);
+  const response = await axiosInstance.get(`/timeslots/scenario/${scenarioId}`);
   return response.data;
 };
 

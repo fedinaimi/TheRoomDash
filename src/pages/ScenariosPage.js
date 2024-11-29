@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { FaEdit, FaTrash, FaPlus } from 'react-icons/fa';
-import { getAllScenarios, createScenario, updateScenario, deleteScenario } from '../services/scenarioService'; // Import services
+import {
+  getAllScenarios,
+  createScenario,
+  updateScenario,
+  deleteScenario,
+} from '../services/scenarioService'; // Import services
 import ConfirmDialog from '../components/ConfirmDialog'; // Import ConfirmDialog component
+import LoaderButton from '../components/LoaderButton'; // Import LoaderButton component
 
 const ScenariosPage = () => {
   const [scenarios, setScenarios] = useState([]);
@@ -15,6 +21,15 @@ const ScenariosPage = () => {
   // Confirmation Dialog State
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [actionToConfirm, setActionToConfirm] = useState({});
+  const [loading, setLoading] = useState(false); // General loader for modal actions
+  const [deleteLoading, setDeleteLoading] = useState({}); // Track delete loaders for each row
+
+  // Pagination States
+  const [currentPage, setCurrentPage] = useState(1);
+  const [scenariosPerPage] = useState(10);
+
+  // Search State
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch scenarios when component loads
   useEffect(() => {
@@ -29,6 +44,19 @@ const ScenariosPage = () => {
     fetchScenarios();
   }, []);
 
+  // Filtered and Paginated Scenarios
+  const filteredScenarios = scenarios.filter(
+    (scenario) =>
+      scenario.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      scenario.category.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const indexOfLastScenario = currentPage * scenariosPerPage;
+  const indexOfFirstScenario = indexOfLastScenario - scenariosPerPage;
+  const currentScenarios = filteredScenarios.slice(indexOfFirstScenario, indexOfLastScenario);
+
+  const totalPages = Math.ceil(filteredScenarios.length / scenariosPerPage);
+
   // Open modal for adding or editing
   const openModal = (scenario = null) => {
     setEditScenario(scenario);
@@ -39,6 +67,7 @@ const ScenariosPage = () => {
   // Handle form submission for adding/editing scenario
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true); // Show loader for modal action
     try {
       if (editScenario) {
         await updateScenario(editScenario._id, newScenario);
@@ -46,20 +75,26 @@ const ScenariosPage = () => {
         await createScenario(newScenario);
       }
       setIsModalOpen(false);
-      window.location.reload(); // Refresh to show the updated list
+      const data = await getAllScenarios(); // Refresh scenarios
+      setScenarios(data);
     } catch (error) {
       console.error('Error saving scenario:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
   // Handle delete confirmation
   const handleDeleteConfirm = async () => {
+    setDeleteLoading((prev) => ({ ...prev, [actionToConfirm.id]: true })); // Show loader for specific row
     try {
       await deleteScenario(actionToConfirm.id);
       setScenarios(scenarios.filter((scenario) => scenario._id !== actionToConfirm.id));
       setIsConfirmDialogOpen(false); // Close confirmation dialog after action
     } catch (error) {
       console.error('Error deleting scenario:', error);
+    } finally {
+      setDeleteLoading((prev) => ({ ...prev, [actionToConfirm.id]: false })); // Remove loader
     }
   };
 
@@ -74,16 +109,33 @@ const ScenariosPage = () => {
     setIsConfirmDialogOpen(false);
   };
 
+  // Handle page change
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
   return (
     <div className="p-4">
       <h1 className="text-3xl font-bold mb-6">Scenarios</h1>
 
-      <button
+      {/* Search Bar */}
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Search by name or category"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full px-4 py-2 border border-gray-300 rounded-md"
+        />
+      </div>
+
+      <LoaderButton
         onClick={() => openModal()}
+        isLoading={false} // Always false for this button
         className="bg-green-500 text-white px-4 py-2 rounded-md mb-4 hover:bg-green-600 transition duration-200"
       >
         <FaPlus className="inline mr-2" /> Add Scenario
-      </button>
+      </LoaderButton>
 
       <div className="overflow-x-auto">
         <table className="min-w-full bg-white border border-gray-300">
@@ -95,28 +147,53 @@ const ScenariosPage = () => {
             </tr>
           </thead>
           <tbody>
-            {scenarios.map((scenario) => (
+            {currentScenarios.map((scenario) => (
               <tr key={scenario._id}>
                 <td className="px-4 py-2 border">{scenario.name}</td>
                 <td className="px-4 py-2 border">{scenario.category}</td>
                 <td className="px-4 py-2 border">
-                  <button
-                    onClick={() => openModal(scenario)}
-                    className="bg-yellow-500 text-white px-2 py-1 rounded-md mr-2 hover:bg-yellow-600"
-                  >
-                    <FaEdit />
-                  </button>
-                  <button
-                    onClick={() => openConfirmDialog(scenario._id, 'delete')} // Open confirmation dialog for delete
-                    className="bg-red-500 text-white px-2 py-1 rounded-md hover:bg-red-600"
-                  >
-                    <FaTrash />
-                  </button>
+                  <div className="flex space-x-2"> {/* Use flex and spacing */}
+                    <LoaderButton
+                      onClick={() => openModal(scenario)}
+                      isLoading={false} // No loader needed for edit
+                      className="bg-yellow-500 text-white px-2 py-1 rounded-md mr-2 hover:bg-yellow-600"
+                    >
+                      <FaEdit />
+                    </LoaderButton>
+                    <LoaderButton
+                      onClick={() => openConfirmDialog(scenario._id, 'delete')}
+                      isLoading={deleteLoading[scenario._id]} // Show loader for delete
+                      className="bg-red-500 text-white px-2 py-1 rounded-md hover:bg-red-600"
+                    >
+                      <FaTrash />
+                    </LoaderButton>
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Pagination Controls */}
+      <div className="mt-4 flex justify-between items-center">
+        <button
+          onClick={() => handlePageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="px-4 py-2 bg-gray-300 rounded-md disabled:bg-gray-400"
+        >
+          Prev
+        </button>
+        <span>
+          Page {currentPage} of {totalPages}
+        </span>
+        <button
+          onClick={() => handlePageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="px-4 py-2 bg-gray-300 rounded-md disabled:bg-gray-400"
+        >
+          Next
+        </button>
       </div>
 
       {/* Modal for Add/Edit */}
@@ -150,15 +227,17 @@ const ScenariosPage = () => {
                   type="button"
                   onClick={() => setIsModalOpen(false)}
                   className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition duration-200"
+                  disabled={loading}
                 >
                   Cancel
                 </button>
-                <button
-                  type="submit"
+                <LoaderButton
+                  onClick={handleSubmit}
+                  isLoading={loading}
                   className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition duration-200"
                 >
                   {editScenario ? 'Update' : 'Add'}
-                </button>
+                </LoaderButton>
               </div>
             </form>
           </div>

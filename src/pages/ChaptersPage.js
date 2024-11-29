@@ -1,78 +1,118 @@
 import React, { useState, useEffect } from 'react';
-import { FaEdit, FaTrash, FaPlus, FaEye } from 'react-icons/fa';
-import {
-  getAllChapters,
-  createChapter,
-  updateChapter,
-  deleteChapter,
-} from '../services/chapterService';
+import { FaCheck, FaTimes, FaTrash, FaPlus, FaEdit, FaEye } from 'react-icons/fa';
+import { getAllChapters, createChapter, updateChapter, deleteChapter } from '../services/chapterService';
 import ChapterForm from '../components/ChapterForm';
 import ChapterDetails from '../components/ChapterDetails';
+import LoaderButton from '../components/LoaderButton'; // Import LoaderButton component
 import ConfirmDialog from '../components/ConfirmDialog';
 
 const ChaptersPage = () => {
   const [chapters, setChapters] = useState([]);
-  const [selectedChapter, setSelectedChapter] = useState(null);
+  const [loading, setLoading] = useState({}); // Track loading state for each button
+  const [currentPage, setCurrentPage] = useState(1); // Current page number
+  const [chaptersPerPage] = useState(10); // Number of chapters per page
+  const [searchQuery, setSearchQuery] = useState(''); // Search query
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editChapter, setEditChapter] = useState(null);
+  const [selectedChapter, setSelectedChapter] = useState(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [chapterToDelete, setChapterToDelete] = useState(null);
-  const [editChapter, setEditChapter] = useState(null);
 
   useEffect(() => {
-    async function fetchChapters() {
-      const chaptersData = await getAllChapters();
-      setChapters(chaptersData);
-    }
     fetchChapters();
   }, []);
 
+  const fetchChapters = async () => {
+    try {
+      const data = await getAllChapters();
+      setChapters(data); // Set fetched chapters data
+    } catch (error) {
+      console.error('Error fetching chapters:', error);
+    }
+  };
+
   const handleAddChapter = async (chapterData) => {
+    setLoading((prev) => ({ ...prev, add: true })); // Set loading state for add button
     try {
       await createChapter(chapterData);
+      fetchChapters(); // Refresh the list of chapters after adding
       setIsFormOpen(false);
-      setEditChapter(null);
-      const chaptersData = await getAllChapters();
-      setChapters(chaptersData);
     } catch (error) {
       console.error('Error adding chapter:', error);
+    } finally {
+      setLoading((prev) => ({ ...prev, add: false })); // Remove loading state
     }
   };
 
   const handleUpdateChapter = async (chapterData) => {
+    setLoading((prev) => ({ ...prev, update: true })); // Set loading state for update button
     try {
       await updateChapter(editChapter._id, chapterData);
+      fetchChapters(); // Refresh the list after updating
       setIsFormOpen(false);
-      setEditChapter(null);
-      const chaptersData = await getAllChapters();
-      setChapters(chaptersData);
     } catch (error) {
       console.error('Error updating chapter:', error);
+    } finally {
+      setLoading((prev) => ({ ...prev, update: false })); // Remove loading state
     }
   };
 
   const handleDeleteChapter = async () => {
+    setLoading((prev) => ({ ...prev, [chapterToDelete._id]: true })); // Set loading state for delete button
     try {
       await deleteChapter(chapterToDelete._id);
+      fetchChapters(); // Refresh list after deleting
       setIsConfirmOpen(false);
       setChapterToDelete(null);
-      const chaptersData = await getAllChapters();
-      setChapters(chaptersData);
     } catch (error) {
       console.error('Error deleting chapter:', error);
+    } finally {
+      setLoading((prev) => ({ ...prev, [chapterToDelete._id]: false })); // Remove loading state
     }
+  };
+
+  // Filter chapters based on search query
+  const filteredChapters = chapters.filter(
+    (chapter) =>
+      chapter.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      chapter.scenario?.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Pagination logic
+  const indexOfLastChapter = currentPage * chaptersPerPage;
+  const indexOfFirstChapter = indexOfLastChapter - chaptersPerPage;
+  const currentChapters = filteredChapters.slice(indexOfFirstChapter, indexOfLastChapter);
+
+  const totalPages = Math.ceil(filteredChapters.length / chaptersPerPage);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
   };
 
   return (
     <div className="p-4">
-      <h1 className="text-3xl font-bold mb-6">Chapters</h1>
+      <h1 className="text-2xl font-bold mb-6">Chapters</h1>
 
-      <button
+      {/* Search Bar */}
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Search by chapter name or scenario"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full px-4 py-2 border border-gray-300 rounded-md"
+        />
+      </div>
+
+      {/* Add Chapter Button */}
+      <LoaderButton
         onClick={() => setIsFormOpen(true)}
+        isLoading={loading.add} // Loader state for add button
         className="bg-green-500 text-white px-4 py-2 rounded-md mb-4 hover:bg-green-600 transition duration-200"
       >
         <FaPlus className="inline mr-2" /> Add Chapter
-      </button>
+      </LoaderButton>
 
       <div className="overflow-x-auto">
         <table className="min-w-full bg-white border border-gray-300">
@@ -87,41 +127,49 @@ const ChaptersPage = () => {
             </tr>
           </thead>
           <tbody>
-            {chapters.map((chapter) => (
-              <tr key={chapter._id} className="hover:bg-gray-100 transition duration-200">
+            {currentChapters.map((chapter) => (
+              <tr key={chapter._id} className="hover:bg-gray-100">
                 <td className="px-4 py-2 border">{chapter.name}</td>
                 <td className="px-4 py-2 border">{chapter.scenario?.name || 'N/A'}</td>
                 <td className="px-4 py-2 border">{chapter.playerNumber}</td>
                 <td className="px-4 py-2 border">{chapter.time} mins</td>
                 <td className="px-4 py-2 border">{chapter.difficulty}</td>
                 <td className="px-4 py-2 border flex space-x-2">
-                  <button
+                  {/* View Button */}
+                  <LoaderButton
                     onClick={() => {
                       setSelectedChapter(chapter);
                       setIsDetailsOpen(true);
                     }}
-                    className="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600 transition duration-200"
+                    isLoading={false}
+                    className="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600"
                   >
                     <FaEye />
-                  </button>
-                  <button
+                  </LoaderButton>
+
+                  {/* Edit Button */}
+                  <LoaderButton
                     onClick={() => {
                       setEditChapter(chapter);
                       setIsFormOpen(true);
                     }}
-                    className="bg-yellow-500 text-white px-2 py-1 rounded-md hover:bg-yellow-600 transition duration-200"
+                    isLoading={loading.update} // Loader state for edit button
+                    className="bg-yellow-500 text-white px-2 py-1 rounded-md hover:bg-yellow-600"
                   >
                     <FaEdit />
-                  </button>
-                  <button
+                  </LoaderButton>
+
+                  {/* Delete Button */}
+                  <LoaderButton
                     onClick={() => {
                       setChapterToDelete(chapter);
                       setIsConfirmOpen(true);
                     }}
-                    className="bg-red-500 text-white px-2 py-1 rounded-md hover:bg-red-600 transition duration-200"
+                    isLoading={loading[chapter._id]} // Loader state for delete button
+                    className="bg-red-500 text-white px-2 py-1 rounded-md hover:bg-red-600"
                   >
                     <FaTrash />
-                  </button>
+                  </LoaderButton>
                 </td>
               </tr>
             ))}
@@ -129,15 +177,33 @@ const ChaptersPage = () => {
         </table>
       </div>
 
-      {/* Add/Edit Form Modal */}
+      {/* Pagination Controls */}
+      <div className="mt-4 flex justify-between items-center">
+        <button
+          onClick={() => handlePageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="px-4 py-2 bg-gray-300 rounded-md disabled:bg-gray-400"
+        >
+          Prev
+        </button>
+        <span>
+          Page {currentPage} of {totalPages}
+        </span>
+        <button
+          onClick={() => handlePageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="px-4 py-2 bg-gray-300 rounded-md disabled:bg-gray-400"
+        >
+          Next
+        </button>
+      </div>
+
+      {/* Add/Edit Chapter Modal */}
       {isFormOpen && (
         <div className="fixed inset-0 flex justify-center items-center z-50 bg-black bg-opacity-50">
           <ChapterForm
             onSubmit={editChapter ? handleUpdateChapter : handleAddChapter}
-            onClose={() => {
-              setIsFormOpen(false);
-              setEditChapter(null);
-            }}
+            onClose={() => setIsFormOpen(false)}
             chapter={editChapter}
           />
         </div>

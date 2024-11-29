@@ -1,18 +1,20 @@
-// src/pages/LoginPage.js
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login } from '../services/authService'; // Assuming you have an authService for API calls
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import LoaderButton from '../components/LoaderButton'; // Import the LoaderButton component
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false); // Track loading state
   const navigate = useNavigate(); // Used for navigation to different routes
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setLoading(true); // Show loader while logging in
 
     try {
       // Call login service to handle login and token storage
@@ -23,6 +25,8 @@ const LoginPage = () => {
     } catch (error) {
       // Set error message if login fails
       setError('Invalid email or password');
+    } finally {
+      setLoading(false); // Hide loader
     }
   };
 
@@ -64,13 +68,14 @@ const LoginPage = () => {
             </span>
           </div>
 
-          {/* Submit Button */}
-          <button
-            type="submit"
+          {/* Submit Button with Loader */}
+          <LoaderButton
+            onClick={handleLogin}
+            isLoading={loading}
             className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition duration-200"
           >
             Login
-          </button>
+          </LoaderButton>
         </form>
       </div>
     </div>
