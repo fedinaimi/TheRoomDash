@@ -1,0 +1,14 @@
+{
+  "files": {
+    "main.css": "/static/css/main.07212ef6.css",
+    "main.js": "/static/js/main.c6dc075c.js",
+    "static/media/thumbnail_LOGOELPEZIAONLYWHITE.png": "/static/media/thumbnail_LOGOELPEZIAONLYWHITE.097fe8816072f53d3308.png",
+    "index.html": "/index.html",
+    "main.07212ef6.css.map": "/static/css/main.07212ef6.css.map",
+    "main.c6dc075c.js.map": "/static/js/main.c6dc075c.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.07212ef6.css",
+    "static/js/main.c6dc075c.js"
+  ]
+}
