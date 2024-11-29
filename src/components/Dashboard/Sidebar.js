@@ -1,7 +1,7 @@
 // src/components/Dashboard/Sidebar.js
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FaUsers, FaBook, FaFileAlt, FaBars, FaTimes, FaHourglassStart, FaChair, FaDashcube } from 'react-icons/fa';
+import { FaUsers, FaBook, FaFileAlt, FaBars, FaTimes, FaHourglassStart } from 'react-icons/fa';
 import { SiFacebookgaming } from 'react-icons/si';
 import elepziaLogo from '../../assets/thumbnail_LOGOELPEZIAONLYWHITE.png'; // Adjust path as necessary
 

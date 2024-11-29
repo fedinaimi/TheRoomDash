@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaCheck, FaTimes, FaTrash, FaPlus, FaEdit, FaEye } from 'react-icons/fa';
+import {  FaTrash, FaPlus, FaEdit, FaEye } from 'react-icons/fa';
 import { getAllChapters, createChapter, updateChapter, deleteChapter } from '../services/chapterService';
 import ChapterForm from '../components/ChapterForm';
 import ChapterDetails from '../components/ChapterDetails';

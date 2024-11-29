@@ -7,10 +7,9 @@ import {
   toggleAvailability,
 } from '../services/timeSlotService';
 import { getAllScenarios } from '../services/scenarioService';
-import { FaTrash, FaEdit, FaEye, FaToggleOn, FaToggleOff, FaPlus } from 'react-icons/fa';
+import { FaTrash, FaEdit, FaToggleOn, FaToggleOff, FaPlus } from 'react-icons/fa';
 import Modal from 'react-modal';
-import { format, parseISO, getYear, getMonth, getDate } from 'date-fns';
-import LoaderButton from '../components/LoaderButton';
+import { format, parseISO} from 'date-fns';
 
 // Custom styles for Modal
 const customStyles = {
@@ -28,7 +27,7 @@ const TimeSlotPage = () => {
   const [scenarios, setScenarios] = useState([]);
   const [selectedScenario, setSelectedScenario] = useState(null);
   const [timeSlots, setTimeSlots] = useState([]);
-  const [isDetailVisible, setIsDetailVisible] = useState(false);
+  const [setIsDetailVisible] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [dateRange, setDateRange] = useState({ from: '', to: '' });
