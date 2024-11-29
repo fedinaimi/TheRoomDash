@@ -1,14 +1,12 @@
 /** @type {import('tailwindcss').Config} */
-// tailwind.config.js
 module.exports = {
-  purge: ['./src/**/*.{js,jsx,ts,tsx}', './public/index.html'],
-  darkMode: false, // or 'media' or 'class'
+  content: ['./src/**/*.{js,jsx,ts,tsx}', './public/index.html'], // Updated from 'purge' to 'content'
+  darkMode: 'media', // Can be 'media' or 'class', or removed entirely if not using dark mode
   theme: {
-    extend: {},
+    extend: {}, // Custom theme extensions go here
   },
   variants: {
-    extend: {},
+    extend: {}, // Custom variants go here
   },
-  plugins: [],
+  plugins: [], // Add any Tailwind plugins if needed
 };
-
