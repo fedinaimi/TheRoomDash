@@ -4,6 +4,7 @@ import io from "socket.io-client";
 import axiosInstance from "../services/axiosInstance";
 const SOCKET_URL = process.env.REACT_APP_SOCKET_URL;
 
+const socket = io(SOCKET_URL);
 
 const NotificationSystem = () => {
   const [notifications, setNotifications] = useState([]);
@@ -25,10 +26,10 @@ const NotificationSystem = () => {
 
   // Listen for real-time notifications
   useEffect(() => {
-    SOCKET_URL.on("reservationCreated", (notification) => {
+    socket.on("reservationCreated", (notification) => {
       setNotifications((prev) => [notification, ...prev]);
     });
-    return () => SOCKET_URL.disconnect();
+    return () => socket.disconnect();
   }, []);
 
   // Mark notification as read
