@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'react-router-dom';
 import PrivateRoute from './components/PrivateRoute';
 import PublicRoute from './components/PublicRoute';
 import Navbar from './components/Dashboard/Navbar';
@@ -13,41 +13,54 @@ const ChaptersPage = React.lazy(() => import('./pages/ChaptersPage'));
 const ReservationsPage = React.lazy(() => import('./pages/ReservationsPage'));
 const TimeSlotPage = React.lazy(() => import('./pages/TimeSlotPage'));
 
+const AppContent = () => {
+  const location = useLocation();
+
+  // Render the Navbar only if not on the login page
+  const shouldShowNavbar = location.pathname !== '/login';
+
+  return (
+    <>
+      {shouldShowNavbar && <Navbar />}
+      <Routes>
+        {/* Public Routes */}
+        <Route
+          path="/login"
+          element={
+            <PublicRoute>
+              <LoginPage />
+            </PublicRoute>
+          }
+        />
+
+        {/* Protected Routes */}
+        <Route
+          path="/dashboard"
+          element={
+            <PrivateRoute>
+              <Dashboard />
+            </PrivateRoute>
+          }
+        >
+          <Route path="users" element={<UsersPage />} />
+          <Route path="scenarios" element={<ScenariosPage />} />
+          <Route path="chapters" element={<ChaptersPage />} />
+          <Route path="reservations" element={<ReservationsPage />} />
+          <Route path="timeslots" element={<TimeSlotPage />} />
+        </Route>
+
+        {/* Redirect all other paths to login */}
+        <Route path="*" element={<Navigate to="/login" />} />
+      </Routes>
+    </>
+  );
+};
+
 const App = () => {
   return (
     <Router>
       <Suspense fallback={<div>Loading...</div>}>
-        <Navbar />
-        <Routes>
-          {/* Public Routes */}
-          <Route
-            path="/login"
-            element={
-              <PublicRoute>
-                <LoginPage />
-              </PublicRoute>
-            }
-          />
-
-          {/* Protected Routes */}
-          <Route
-            path="/dashboard"
-            element={
-              <PrivateRoute>
-                <Dashboard />
-              </PrivateRoute>
-            }
-          >
-            <Route path="users" element={<UsersPage />} />
-            <Route path="scenarios" element={<ScenariosPage />} />
-            <Route path="chapters" element={<ChaptersPage />} />
-            <Route path="reservations" element={<ReservationsPage />} />
-            <Route path="timeslots" element={<TimeSlotPage />} />
-          </Route>
-
-          {/* Redirect all other paths to login */}
-          <Route path="*" element={<Navigate to="/login" />} />
-        </Routes>
+        <AppContent />
       </Suspense>
     </Router>
   );
