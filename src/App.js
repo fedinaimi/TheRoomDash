@@ -4,7 +4,7 @@ import PrivateRoute from './components/PrivateRoute';
 import PublicRoute from './components/PublicRoute';
 import Navbar from './components/Dashboard/Navbar';
 
-// Lazy-loaded pages
+// Lazy-loaded pages for better performance
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
 const LoginPage = React.lazy(() => import('./pages/LoginPage'));
 const UsersPage = React.lazy(() => import('./pages/UsersPage'));
@@ -16,12 +16,12 @@ const TimeSlotPage = React.lazy(() => import('./pages/TimeSlotPage'));
 const AppContent = () => {
   const location = useLocation();
 
-  // Render the Navbar only if not on the login page
+  // Render Navbar conditionally based on route
   const shouldShowNavbar = location.pathname !== '/login';
 
   return (
     <>
-      {shouldShowNavbar && <Navbar />}
+      {shouldShowNavbar && <Navbar />} {/* Navbar hidden on login */}
       <Routes>
         {/* Public Routes */}
         <Route
@@ -49,7 +49,7 @@ const AppContent = () => {
           <Route path="timeslots" element={<TimeSlotPage />} />
         </Route>
 
-        {/* Redirect all other paths to login */}
+        {/* Redirect unknown paths to login */}
         <Route path="*" element={<Navigate to="/login" />} />
       </Routes>
     </>
