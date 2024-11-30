@@ -1,14 +1,34 @@
 {
   "files": {
     "main.css": "/static/css/main.07212ef6.css",
-    "main.js": "/static/js/main.c6dc075c.js",
+    "main.js": "/static/js/main.724b85e7.js",
+    "static/js/608.44481eab.chunk.js": "/static/js/608.44481eab.chunk.js",
+    "static/js/93.63494a69.chunk.js": "/static/js/93.63494a69.chunk.js",
+    "static/js/220.a2cbb5b2.chunk.js": "/static/js/220.a2cbb5b2.chunk.js",
+    "static/js/771.eb5807d9.chunk.js": "/static/js/771.eb5807d9.chunk.js",
+    "static/js/498.4b406917.chunk.js": "/static/js/498.4b406917.chunk.js",
+    "static/js/369.3054f37d.chunk.js": "/static/js/369.3054f37d.chunk.js",
+    "static/js/791.7e95f127.chunk.js": "/static/js/791.7e95f127.chunk.js",
+    "static/js/427.eef6e4b5.chunk.js": "/static/js/427.eef6e4b5.chunk.js",
+    "static/js/855.bd6606b6.chunk.js": "/static/js/855.bd6606b6.chunk.js",
+    "static/js/355.0e89550f.chunk.js": "/static/js/355.0e89550f.chunk.js",
     "static/media/thumbnail_LOGOELPEZIAONLYWHITE.png": "/static/media/thumbnail_LOGOELPEZIAONLYWHITE.097fe8816072f53d3308.png",
     "index.html": "/index.html",
     "main.07212ef6.css.map": "/static/css/main.07212ef6.css.map",
-    "main.c6dc075c.js.map": "/static/js/main.c6dc075c.js.map"
+    "main.724b85e7.js.map": "/static/js/main.724b85e7.js.map",
+    "608.44481eab.chunk.js.map": "/static/js/608.44481eab.chunk.js.map",
+    "93.63494a69.chunk.js.map": "/static/js/93.63494a69.chunk.js.map",
+    "220.a2cbb5b2.chunk.js.map": "/static/js/220.a2cbb5b2.chunk.js.map",
+    "771.eb5807d9.chunk.js.map": "/static/js/771.eb5807d9.chunk.js.map",
+    "498.4b406917.chunk.js.map": "/static/js/498.4b406917.chunk.js.map",
+    "369.3054f37d.chunk.js.map": "/static/js/369.3054f37d.chunk.js.map",
+    "791.7e95f127.chunk.js.map": "/static/js/791.7e95f127.chunk.js.map",
+    "427.eef6e4b5.chunk.js.map": "/static/js/427.eef6e4b5.chunk.js.map",
+    "855.bd6606b6.chunk.js.map": "/static/js/855.bd6606b6.chunk.js.map",
+    "355.0e89550f.chunk.js.map": "/static/js/355.0e89550f.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.07212ef6.css",
-    "static/js/main.c6dc075c.js"
+    "static/js/main.724b85e7.js"
   ]
 }
