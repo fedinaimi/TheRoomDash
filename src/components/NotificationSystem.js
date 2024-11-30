@@ -1,14 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { FaBell, FaTrash, FaChevronDown, FaChevronUp } from "react-icons/fa";
 import io from "socket.io-client";
-import axios from "axios";
-
-// Backend URLs from environment variables
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+import axiosInstance from "../services/axiosInstance";
 const SOCKET_URL = process.env.REACT_APP_SOCKET_URL;
 
-// Initialize Socket.IO client
-const socket = io(SOCKET_URL);
 
 const NotificationSystem = () => {
   const [notifications, setNotifications] = useState([]);
@@ -19,7 +14,7 @@ const NotificationSystem = () => {
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
-        const { data } = await axios.get(`${BACKEND_URL}/notifications`);
+        const { data } = await axiosInstance.get("/notifications");
         setNotifications(data);
       } catch (error) {
         console.error("Error fetching notifications:", error);
@@ -30,18 +25,18 @@ const NotificationSystem = () => {
 
   // Listen for real-time notifications
   useEffect(() => {
-    socket.on("reservationCreated", (notification) => {
+    SOCKET_URL.on("reservationCreated", (notification) => {
       setNotifications((prev) => [notification, ...prev]);
     });
-    return () => socket.disconnect();
+    return () => SOCKET_URL.disconnect();
   }, []);
 
   // Mark notification as read
   const markAsRead = async (id) => {
     try {
-      await axios.put(`${BACKEND_URL}/notifications/${id}/read`);
+      await axiosInstance.put(`/notifications/${id}/read`);
       setNotifications((prev) =>
-        prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
+        prev.map((n) => (n._id === id ? { ...n, read: true } : n))
       );
     } catch (error) {
       console.error("Error marking notification as read:", error);
@@ -51,7 +46,7 @@ const NotificationSystem = () => {
   // Delete notification
   const deleteNotification = async (id) => {
     try {
-      await axios.delete(`${BACKEND_URL}/notifications/${id}`);
+      await axiosInstance.delete(`/notifications/${id}`);
       setNotifications((prev) => prev.filter((n) => n._id !== id));
     } catch (error) {
       console.error("Error deleting notification:", error);
@@ -86,9 +81,9 @@ const NotificationSystem = () => {
         className="relative flex items-center bg-gray-100 p-2 rounded-full hover:bg-gray-200"
       >
         <FaBell size={20} />
-        {notifications.some((n) => !n.isRead) && (
+        {notifications.some((n) => !n.read) && (
           <span className="absolute top-0 right-0 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-            {notifications.filter((n) => !n.isRead).length}
+            {notifications.filter((n) => !n.read).length}
           </span>
         )}
       </button>
@@ -105,7 +100,7 @@ const NotificationSystem = () => {
               <li
                 key={notification._id}
                 className={`p-4 border-b text-gray-600 ${
-                  notification.isRead ? "opacity-50" : ""
+                  notification.read ? "opacity-50" : ""
                 }`}
               >
                 <div className="flex justify-between items-center">
