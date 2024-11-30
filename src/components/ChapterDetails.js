@@ -7,6 +7,7 @@ import {
   FaVideo,
   FaImage,
   FaBook,
+  
 } from 'react-icons/fa';
 
 const ChapterDetails = ({ chapter, onClose }) => {
