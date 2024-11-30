@@ -12,16 +12,19 @@ const ScenariosPage = React.lazy(() => import('./pages/ScenariosPage'));
 const ChaptersPage = React.lazy(() => import('./pages/ChaptersPage'));
 const ReservationsPage = React.lazy(() => import('./pages/ReservationsPage'));
 const TimeSlotPage = React.lazy(() => import('./pages/TimeSlotPage'));
+const ForgotPasswordPage = React.lazy(() => import('./pages/ForgotPasswordPage'));
+const ResetPasswordPage = React.lazy(() => import('./pages/ResetPasswordPage'));
+const SettingsPage = React.lazy(() => import('./pages/SettingsPage'));
 
 const AppContent = () => {
   const location = useLocation();
 
   // Render Navbar conditionally based on route
-  const shouldShowNavbar = location.pathname !== '/login';
+  const shouldShowNavbar = !['/login', '/forgot-password', '/reset-password'].includes(location.pathname);
 
   return (
     <>
-      {shouldShowNavbar && <Navbar />} {/* Navbar hidden on login */}
+      {shouldShowNavbar && <Navbar />} {/* Navbar hidden on public routes */}
       <Routes>
         {/* Public Routes */}
         <Route
@@ -29,6 +32,22 @@ const AppContent = () => {
           element={
             <PublicRoute>
               <LoginPage />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/forgot-password"
+          element={
+            <PublicRoute>
+              <ForgotPasswordPage />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/reset-password"
+          element={
+            <PublicRoute>
+              <ResetPasswordPage />
             </PublicRoute>
           }
         />
@@ -42,11 +61,13 @@ const AppContent = () => {
             </PrivateRoute>
           }
         >
+          {/* Nested Routes within Dashboard */}
           <Route path="users" element={<UsersPage />} />
           <Route path="scenarios" element={<ScenariosPage />} />
           <Route path="chapters" element={<ChaptersPage />} />
           <Route path="reservations" element={<ReservationsPage />} />
           <Route path="timeslots" element={<TimeSlotPage />} />
+          <Route path="settings" element={<SettingsPage />} /> {/* Settings Page */}
         </Route>
 
         {/* Redirect unknown paths to login */}

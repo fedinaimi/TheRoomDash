@@ -18,3 +18,26 @@ export const login = async (email, password) => {
 export const isAuthenticated = () => {
   return document.cookie.includes('token='); // Check if token exists in cookies
 };
+
+export const forgotPassword = async (email) => {
+  const response = await axiosInstance.post('/forgot-password', { email });
+  return response.data; // Return the message from the server
+};
+
+export const resetPassword = async (resetCode, newPassword, confirmPassword) => {
+  const response = await axiosInstance.post('/reset-password', {
+    code: resetCode,
+    newPassword,
+    confirmPassword,
+  });
+  return response.data;
+};
+
+export const changePassword = async (oldPassword, newPassword, confirmPassword) => {
+  const response = await axiosInstance.post('/modify-password', {
+    oldPassword,
+    newPassword,
+    confirmPassword,
+  });
+  return response.data;
+};
