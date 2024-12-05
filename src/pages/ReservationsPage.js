@@ -1,46 +1,47 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   getAllReservations,
   updateReservationStatus,
   deleteReservation,
-} from '../services/reservationService';
-import { FaCheck, FaTimes, FaTrash } from 'react-icons/fa';
-import { format } from 'date-fns'; // Import date-fns for formatting
-import LoaderButton from '../components/LoaderButton'; // Import LoaderButton component
+} from "../services/reservationService";
+import { FaCheck, FaTimes, FaTrash } from "react-icons/fa";
+import { format } from "date-fns"; // Import date-fns for formatting
+import LoaderButton from "../components/LoaderButton"; // Import LoaderButton component
 
 const ReservationsPage = () => {
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState({}); // Track loading state for each button
   const [currentPage, setCurrentPage] = useState(1); // Current page number
   const [reservationsPerPage] = useState(10); // Number of reservations per page
-  const [searchQuery, setSearchQuery] = useState(''); // Search query
-  const [statusFilter, setStatusFilter] = useState(''); // Status filter
+  const [searchQuery, setSearchQuery] = useState(""); // Search query
+  const [statusFilter, setStatusFilter] = useState(""); // Status filter
+  const [dateFilter, setDateFilter] = useState(""); // Date filter for time slot date
 
   useEffect(() => {
     fetchReservations();
-  }, []);
+  }, [dateFilter]); // Fetch reservations on date filter change
 
   const fetchReservations = async () => {
     try {
       const data = await getAllReservations();
       // Sort reservations by creation date (descending)
       const sortedReservations = data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      
+
       // Reverse the sorted array to ensure the last reservation is shown first
       const reversedReservations = sortedReservations.reverse();
-      
+
       setReservations(reversedReservations);
     } catch (error) {
-      console.error('Error fetching reservations:', error);
+      console.error("Error fetching reservations:", error);
     }
   };
 
   const formatTime = (isoString) => {
     try {
-      return format(new Date(isoString), 'h:mm a'); // Format as "2:00 PM"
+      return format(new Date(isoString), "yyyy-MM-dd HH:mm:ss"); // Format as "2024-12-05 14:00:00"
     } catch (error) {
-      console.error('Error formatting time:', error);
-      return 'Invalid time';
+      console.error("Error formatting time:", error);
+      return "Invalid time";
     }
   };
 
@@ -50,7 +51,7 @@ const ReservationsPage = () => {
       await updateReservationStatus(id, status);
       fetchReservations(); // Refresh after status update
     } catch (error) {
-      console.error('Error updating reservation status:', error);
+      console.error("Error updating reservation status:", error);
     } finally {
       setLoading((prev) => ({ ...prev, [id]: false })); // Clear loading state
     }
@@ -62,13 +63,13 @@ const ReservationsPage = () => {
       await deleteReservation(id);
       fetchReservations(); // Refresh after deletion
     } catch (error) {
-      console.error('Error deleting reservation:', error);
+      console.error("Error deleting reservation:", error);
     } finally {
       setLoading((prev) => ({ ...prev, [id]: false })); // Clear loading state
     }
   };
 
-  // Filter reservations based on search query and status filter
+  // Filter reservations based on search query, status, and time slot date filter
   const filteredReservations = reservations.filter((reservation) => {
     const matchesSearchQuery =
       reservation.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -76,8 +77,11 @@ const ReservationsPage = () => {
     const matchesStatusFilter = statusFilter
       ? reservation.status.toLowerCase() === statusFilter.toLowerCase()
       : true;
+    const matchesDateFilter = dateFilter
+      ? reservation.timeSlot?.date === dateFilter
+      : true;
 
-    return matchesSearchQuery && matchesStatusFilter;
+    return matchesSearchQuery && matchesStatusFilter && matchesDateFilter;
   });
 
   // Pagination logic
@@ -121,6 +125,16 @@ const ReservationsPage = () => {
         </select>
       </div>
 
+      {/* Date Filter for Time Slot Date */}
+      <div className="mb-4">
+        <input
+          type="date"
+          value={dateFilter}
+          onChange={(e) => setDateFilter(e.target.value)}
+          className="w-full px-4 py-2 border border-gray-300 rounded-md"
+        />
+      </div>
+
       <div className="overflow-x-auto">
         <table className="min-w-full bg-white border border-gray-300">
           <thead>
@@ -141,20 +155,20 @@ const ReservationsPage = () => {
                 <td className="px-4 py-2 border">{reservation.name}</td>
                 <td className="px-4 py-2 border">{reservation.email}</td>
                 <td className="px-4 py-2 border">{reservation.phone}</td>
-                <td className="px-4 py-2 border">{reservation.scenario?.name || 'N/A'}</td>
-                <td className="px-4 py-2 border">{reservation.chapter?.name || 'N/A'}</td>
+                <td className="px-4 py-2 border">{reservation.scenario?.name || "N/A"}</td>
+                <td className="px-4 py-2 border">{reservation.chapter?.name || "N/A"}</td>
                 <td className="px-4 py-2 border">
                   {reservation.timeSlot
                     ? `${formatTime(reservation.timeSlot.startTime)} - ${formatTime(
                         reservation.timeSlot.endTime
                       )}`
-                    : 'No time slot'}
+                    : "No time slot"}
                 </td>
                 <td className="px-4 py-2 border">{reservation.status}</td>
                 <td className="px-4 py-2 border flex space-x-2">
                   {/* Approve Button */}
                   <LoaderButton
-                    onClick={() => handleUpdateStatus(reservation._id, 'approved')}
+                    onClick={() => handleUpdateStatus(reservation._id, "approved")}
                     isLoading={loading[reservation._id]}
                     className="bg-green-500 text-white px-2 py-1 rounded-md hover:bg-green-600"
                   >
@@ -162,7 +176,7 @@ const ReservationsPage = () => {
                   </LoaderButton>
                   {/* Decline Button */}
                   <LoaderButton
-                    onClick={() => handleUpdateStatus(reservation._id, 'declined')}
+                    onClick={() => handleUpdateStatus(reservation._id, "declined")}
                     isLoading={loading[reservation._id]}
                     className="bg-yellow-500 text-white px-2 py-1 rounded-md hover:bg-yellow-600"
                   >

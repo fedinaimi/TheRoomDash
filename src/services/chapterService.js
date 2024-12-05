@@ -6,16 +6,22 @@ export const getAllChapters = async () => {
 };
 
 // Create a new chapter
-export const createChapter = async (chapter) => {
-  const response = await axiosInstance.post('/chapters', chapter);
+export const createChapter = async (formData) => {
+  const response = await axiosInstance.post('/chapters', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data;
+};
+
+export const updateChapter = async (id, formData) => {
+  const response = await axiosInstance.put(`/chapters/${id}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
   return response.data;
 };
 
 // Update a chapter by ID
-export const updateChapter = async (id, chapter) => {
-  const response = await axiosInstance.put(`/chapters/${id}`, chapter);
-  return response.data;
-};
+
 
 // Delete a chapter by ID
 export const deleteChapter = async (id) => {
