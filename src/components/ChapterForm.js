@@ -6,6 +6,8 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
   const [formData, setFormData] = useState({
     name: '',
     playerNumber: '',
+    minPlayerNumber: '', // Added field
+    maxPlayerNumber: '', // Added field
     time: '',
     difficulty: '',
     description: '',
@@ -31,6 +33,8 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
       setFormData({
         name: chapter.name || '',
         playerNumber: chapter.playerNumber || '',
+        minPlayerNumber: chapter.minPlayerNumber || '', // Populate
+        maxPlayerNumber: chapter.maxPlayerNumber || '', // Populate
         time: chapter.time || '',
         difficulty: chapter.difficulty || '',
         description: chapter.description || '',
@@ -113,6 +117,34 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             onChange={handleChange}
             className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600"
             placeholder="Number of players"
+            required
+          />
+        </div>
+
+        {/* Min Player Number */}
+        <div>
+          <label className="block text-gray-700 font-bold mb-2">Min Player Number</label>
+          <input
+            name="minPlayerNumber"
+            type="number"
+            value={formData.minPlayerNumber}
+            onChange={handleChange}
+            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600"
+            placeholder="Minimum players"
+            required
+          />
+        </div>
+
+        {/* Max Player Number */}
+        <div>
+          <label className="block text-gray-700 font-bold mb-2">Max Player Number</label>
+          <input
+            name="maxPlayerNumber"
+            type="number"
+            value={formData.maxPlayerNumber}
+            onChange={handleChange}
+            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600"
+            placeholder="Maximum players"
             required
           />
         </div>

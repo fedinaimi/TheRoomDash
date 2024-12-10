@@ -54,7 +54,17 @@ const ChapterDetails = ({ chapter, onClose }) => {
           <strong>Players:</strong>
           <span className="ml-1">{chapter.playerNumber}</span>
         </p>
-
+        <p className="mb-2 flex items-center">
+          <FaUsers className="inline-block mr-2" />
+          <strong>Max Players:</strong>
+          <span className="ml-1">{chapter. maxPlayerNumber}</span>
+        </p>
+        <p className="mb-2 flex items-center">
+          <FaUsers className="inline-block mr-2" />
+          <strong>Min Players:</strong>
+          <span className="ml-1">{chapter. minPlayerNumber}</span>
+        </p>
+       
         {/* Time */}
         <p className="mb-2 flex items-center">
           <FaClock className="inline-block mr-2" />
