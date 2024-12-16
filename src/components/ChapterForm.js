@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { getAllScenarios } from '../services/scenarioService';
+import LoaderButton from './LoaderButton';
 
 const ChapterForm = ({ onSubmit, onClose, chapter }) => {
   const [scenarios, setScenarios] = useState([]);
   const [formData, setFormData] = useState({
     name: '',
-    playerNumber: '',
-    minPlayerNumber: '', // Added field
-    maxPlayerNumber: '', // Added field
+    minPlayerNumber: '',
+    maxPlayerNumber: '',
+    percentageOfSuccess: '',
     time: '',
     difficulty: '',
     description: '',
@@ -17,6 +18,8 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
     video: null,
     scenarioId: '',
   });
+  const [errors, setErrors] = useState({});
+  const [isLoading, setIsLoading] = useState(false); // Add loader state
 
   useEffect(() => {
     async function fetchScenarios() {
@@ -32,9 +35,10 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
     if (chapter) {
       setFormData({
         name: chapter.name || '',
-        playerNumber: chapter.playerNumber || '',
-        minPlayerNumber: chapter.minPlayerNumber || '', // Populate
-        maxPlayerNumber: chapter.maxPlayerNumber || '', // Populate
+        minPlayerNumber: chapter.minPlayerNumber || '',
+        maxPlayerNumber: chapter.maxPlayerNumber || '',
+        percentageOfSuccess: chapter.percentageOfSuccess || '',
+
         time: chapter.time || '',
         difficulty: chapter.difficulty || '',
         description: chapter.description || '',
@@ -47,9 +51,38 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
     }
   }, [chapter]);
 
+  const validate = () => {
+    const newErrors = {};
+
+    if (!formData.name) newErrors.name = 'Name is required';
+    if (!formData.scenarioId) newErrors.scenarioId = 'Scenario is required';
+    if (!formData.minPlayerNumber) newErrors.minPlayerNumber = 'Minimum players is required';
+    if (!formData.maxPlayerNumber) newErrors.maxPlayerNumber = 'Maximum players is required';
+    if (!formData.time) newErrors.time = 'Time is required';
+    if (!formData.difficulty) newErrors.difficulty = 'Difficulty is required';
+    if (!formData.description) newErrors.description = 'Description is required';
+    if (!formData.place) newErrors.place = 'Place is required';
+
+    if (formData.minPlayerNumber && formData.maxPlayerNumber) {
+      if (parseInt(formData.minPlayerNumber) > parseInt(formData.maxPlayerNumber)) {
+        newErrors.minPlayerNumber = 'Minimum players must not exceed maximum players';
+      }
+    }
+
+    if (formData.percentageOfSuccess) {
+      if (formData.percentageOfSuccess < 0 || formData.percentageOfSuccess > 100) {
+        newErrors.percentageOfSuccess = 'Percentage of success must be between 0 and 100';
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
+    setErrors({ ...errors, [name]: '' }); // Clear the error for the specific field
   };
 
   const handleFileChange = (e, type) => {
@@ -59,13 +92,16 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.place) {
-      alert('Place is required!');
-      return;
+    if (validate()) {
+      setIsLoading(true); // Start loader
+      try {
+        await onSubmit(formData); // Simulate submission
+      } finally {
+        setIsLoading(false); // Stop loader
+      }
     }
-    onSubmit(formData);
   };
 
   return (
@@ -84,8 +120,8 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             onChange={handleChange}
             className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600"
             placeholder="Chapter name"
-            required
           />
+          {errors.name && <p className="text-red-500 text-sm">{errors.name}</p>}
         </div>
 
         {/* Scenario */}
@@ -96,7 +132,6 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             value={formData.scenarioId}
             onChange={handleChange}
             className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600"
-            required
           >
             <option value="">Select a scenario</option>
             {scenarios.map((scenario) => (
@@ -105,21 +140,9 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
               </option>
             ))}
           </select>
+          {errors.scenarioId && <p className="text-red-500 text-sm">{errors.scenarioId}</p>}
         </div>
 
-        {/* Player Number */}
-        <div>
-          <label className="block text-gray-700 font-bold mb-2">Player Number</label>
-          <input
-            name="playerNumber"
-            type="number"
-            value={formData.playerNumber}
-            onChange={handleChange}
-            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600"
-            placeholder="Number of players"
-            required
-          />
-        </div>
 
         {/* Min Player Number */}
         <div>
@@ -131,8 +154,10 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             onChange={handleChange}
             className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600"
             placeholder="Minimum players"
-            required
           />
+          {errors.minPlayerNumber && (
+            <p className="text-red-500 text-sm">{errors.minPlayerNumber}</p>
+          )}
         </div>
 
         {/* Max Player Number */}
@@ -145,8 +170,25 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             onChange={handleChange}
             className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600"
             placeholder="Maximum players"
-            required
           />
+          {errors.maxPlayerNumber && (
+            <p className="text-red-500 text-sm">{errors.maxPlayerNumber}</p>
+          )}
+        </div>
+        {/* Percentage of Success */}
+        <div>
+          <label className="block text-gray-700 font-bold mb-2">Success Percentage</label>
+          <input
+            name="percentageOfSuccess"
+            type="number"
+            value={formData.percentageOfSuccess}
+            onChange={handleChange}
+            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600"
+            placeholder="Success percentage"
+          />
+          {errors.percentageOfSuccess && (
+            <p className="text-red-500 text-sm">{errors.percentageOfSuccess}</p>
+          )}
         </div>
 
         {/* Time */}
@@ -159,8 +201,8 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             onChange={handleChange}
             className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600"
             placeholder="Time in minutes"
-            required
           />
+          {errors.time && <p className="text-red-500 text-sm">{errors.time}</p>}
         </div>
 
         {/* Difficulty */}
@@ -171,13 +213,13 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             value={formData.difficulty}
             onChange={handleChange}
             className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600"
-            required
           >
             <option value="">Select difficulty</option>
             <option value="easy">Easy</option>
             <option value="medium">Medium</option>
             <option value="hard">Hard</option>
           </select>
+          {errors.difficulty && <p className="text-red-500 text-sm">{errors.difficulty}</p>}
         </div>
 
         {/* Description */}
@@ -189,8 +231,8 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             onChange={handleChange}
             className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600"
             placeholder="Describe the chapter"
-            required
           />
+          {errors.description && <p className="text-red-500 text-sm">{errors.description}</p>}
         </div>
 
         {/* Place */}
@@ -203,12 +245,12 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             onChange={handleChange}
             className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600"
             placeholder="Enter the location"
-            required
           />
+          {errors.place && <p className="text-red-500 text-sm">{errors.place}</p>}
         </div>
 
-        {/* Image Upload */}
-        <div>
+      {/* Image Upload */}
+      <div>
           <label className="block text-gray-700 font-bold mb-2">Image</label>
           <input
             type="file"
@@ -245,19 +287,21 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
 
         {/* Buttons */}
         <div className="col-span-1 md:col-span-2 flex justify-end space-x-4">
-          <button
-            type="button"
+          <LoaderButton
             onClick={onClose}
+            isLoading={false} // No loader for cancel button
             className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition duration-200"
           >
             Cancel
-          </button>
-          <button
+          </LoaderButton>
+          <LoaderButton
             type="submit"
+            onClick={handleSubmit}
+            isLoading={isLoading} // Show loader on submission
             className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition duration-200"
           >
             {chapter ? 'Update' : 'Add'}
-          </button>
+          </LoaderButton>
         </div>
       </form>
     </div>

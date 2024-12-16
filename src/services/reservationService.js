@@ -20,13 +20,18 @@ export const getReservationById = async (id) => {
 };
 
 // Update reservation status (admin access)
-export const updateReservationStatus = async (id, status) => {
-  const response = await axiosInstance.put(`/reservations/${id}/status`, { status });
+export const updateReservationStatus = async (source, reservationId, status) => {
+  const response = await axiosInstance.put(
+    `/reservations/${source}/${reservationId}/status`,
+    { status }
+  );
   return response.data;
 };
 
 // Delete a reservation (admin access)
-export const deleteReservation = async (id) => {
-  const response = await axiosInstance.delete(`/reservations/${id}`);
+// Delete a reservation from the specified source
+export const deleteReservation = async (source, reservationId) => {
+  const response = await axiosInstance.delete(`/reservations/${source}/${reservationId}`);
   return response.data;
 };
+

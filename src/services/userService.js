@@ -6,9 +6,16 @@ export const fetchAllUsers = async () => {
 };
 
 export const createUser = async (userData) => {
-  const response = await axiosInstance.post('/users', userData);
+  const requestData = {
+    ...userData,
+    password: userData.newPassword, // Map newPassword to password
+  };
+  delete requestData.newPassword; // Remove newPassword before sending
+
+  const response = await axiosInstance.post('/users', requestData);
   return response.data;
 };
+
 
 export const updateUserVerification = async (userId, verified) => {
   const response = await axiosInstance.put(`/users/${userId}/verification`, { verified });

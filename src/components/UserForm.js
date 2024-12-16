@@ -53,7 +53,6 @@ const UserForm = ({ user, onSave, onClose }) => {
         >
           <option value="admin">Admin</option>
           <option value="subadmin">Subadmin</option>
-          <option value="user">User</option>
         </select>
 
         {/* Password Field for Admin */}

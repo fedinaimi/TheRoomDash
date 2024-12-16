@@ -140,6 +140,8 @@ const ChaptersPage = () => {
               <th className="px-4 py-2 border">Players</th>
               <th className="px-4 py-2 border">Time</th>
               <th className="px-4 py-2 border">Difficulty</th>
+              <th className="px-1 py-2 border">percentage of Success </th>
+
               <th className="px-4 py-2 border">Actions</th>
             </tr>
           </thead>
@@ -151,6 +153,8 @@ const ChaptersPage = () => {
                 <td className="px-4 py-2 border">{chapter.playerNumber}</td>
                 <td className="px-4 py-2 border">{chapter.time} mins</td>
                 <td className="px-4 py-2 border">{chapter.difficulty}</td>
+                <td className="px-4 py-2 border">{chapter.percentageOfSuccess}</td>
+
                 <td className="px-4 py-2 border flex space-x-2">
                   <LoaderButton
                     onClick={() => {

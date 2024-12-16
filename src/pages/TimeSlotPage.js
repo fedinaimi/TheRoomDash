@@ -30,10 +30,7 @@ const TimeSlotPage = () => {
     startTime: "",
     endTime: "",
   }); // Weekday times
-  const [weekendTime, setWeekendTime] = useState({
-    startTime: "",
-    endTime: "",
-  }); // Weekend times
+
   const [error, setError] = useState(null); // Error message
   const [loading, setLoading] = useState(false); // Loading state
 
@@ -218,14 +215,11 @@ const TimeSlotPage = () => {
             setDateRange={setDateRange}
             weekdayTime={weekdayTime}
             setWeekdayTime={setWeekdayTime}
-            weekendTime={weekendTime}
-            setWeekendTime={setWeekendTime}
             onSave={async () => {
               await createTimeSlots(
                 selectedChapter._id,
                 dateRange,
                 weekdayTime,
-                weekendTime
               );
               fetchTimeSlots();
               setIsAddModalOpen(false);

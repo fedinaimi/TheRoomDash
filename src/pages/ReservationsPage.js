@@ -5,32 +5,31 @@ import {
   deleteReservation,
 } from "../services/reservationService";
 import { FaCheck, FaTimes, FaTrash } from "react-icons/fa";
-import { format } from "date-fns"; // Import date-fns for formatting
-import LoaderButton from "../components/LoaderButton"; // Import LoaderButton component
+import { format } from "date-fns"; // For date formatting
+import LoaderButton from "../components/LoaderButton"; // Reusable button with loading indicator
 
 const ReservationsPage = () => {
-  const [reservations, setReservations] = useState([]);
-  const [loading, setLoading] = useState({}); // Track loading state for each button
-  const [currentPage, setCurrentPage] = useState(1); // Current page number
-  const [reservationsPerPage] = useState(10); // Number of reservations per page
-  const [searchQuery, setSearchQuery] = useState(""); // Search query
-  const [statusFilter, setStatusFilter] = useState(""); // Status filter
-  const [dateFilter, setDateFilter] = useState(""); // Date filter for time slot date
+  const [data, setData] = useState({
+    reservations: [],
+    approvedReservations: [],
+    declinedReservations: [],
+  });
+  const [currentTable, setCurrentTable] = useState("reservations"); // Current displayed table
+  const [loading, setLoading] = useState({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [reservationsPerPage] = useState(10);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
+  const [scenarioFilter, setScenarioFilter] = useState("");
 
   useEffect(() => {
-    fetchReservations();
-  }, [dateFilter]); // Fetch reservations on date filter change
+    fetchAllReservations();
+  }, [dateFilter]);
 
-  const fetchReservations = async () => {
+  const fetchAllReservations = async () => {
     try {
-      const data = await getAllReservations();
-      // Sort reservations by creation date (descending)
-      const sortedReservations = data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-      // Reverse the sorted array to ensure the last reservation is shown first
-      const reversedReservations = sortedReservations.reverse();
-
-      setReservations(reversedReservations);
+      const fetchedData = await getAllReservations();
+      setData(fetchedData);
     } catch (error) {
       console.error("Error fetching reservations:", error);
     }
@@ -38,60 +37,65 @@ const ReservationsPage = () => {
 
   const formatTime = (isoString) => {
     try {
-      return format(new Date(isoString), "yyyy-MM-dd HH:mm:ss"); // Format as "2024-12-05 14:00:00"
+      return format(new Date(isoString), "yyyy-MM-dd HH:mm:ss");
     } catch (error) {
       console.error("Error formatting time:", error);
       return "Invalid time";
     }
   };
 
-  const handleUpdateStatus = async (id, status) => {
-    setLoading((prev) => ({ ...prev, [id]: true })); // Set loading for this reservation
+  const handleUpdateStatus = async (reservationId, status, source) => {
+    setLoading((prev) => ({ ...prev, [reservationId]: true }));
     try {
-      await updateReservationStatus(id, status);
-      fetchReservations(); // Refresh after status update
+      await updateReservationStatus(source, reservationId, status); // Pass source and status
+      fetchAllReservations(); // Refresh reservations after status update
     } catch (error) {
       console.error("Error updating reservation status:", error);
     } finally {
-      setLoading((prev) => ({ ...prev, [id]: false })); // Clear loading state
+      setLoading((prev) => ({ ...prev, [reservationId]: false }));
     }
   };
 
-  const handleDelete = async (id) => {
-    setLoading((prev) => ({ ...prev, [id]: true })); // Set loading for this reservation
+  const handleDelete = async (reservationId, source) => {
+    setLoading((prev) => ({ ...prev, [reservationId]: true }));
     try {
-      await deleteReservation(id);
-      fetchReservations(); // Refresh after deletion
+      await deleteReservation(source, reservationId); // Pass source and ID
+      fetchAllReservations(); // Refresh data
     } catch (error) {
       console.error("Error deleting reservation:", error);
     } finally {
-      setLoading((prev) => ({ ...prev, [id]: false })); // Clear loading state
+      setLoading((prev) => ({ ...prev, [reservationId]: false }));
     }
   };
 
-  // Filter reservations based on search query, status, and time slot date filter
-  const filteredReservations = reservations.filter((reservation) => {
-    const matchesSearchQuery =
-      reservation.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      reservation.email.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatusFilter = statusFilter
-      ? reservation.status.toLowerCase() === statusFilter.toLowerCase()
-      : true;
-    const matchesDateFilter = dateFilter
-      ? reservation.timeSlot?.date === dateFilter
-      : true;
+  // Filter reservations for the currently selected table
+  const filteredReservations =
+    data[currentTable]?.filter((reservation) => {
+      const matchesSearchQuery =
+        reservation.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        reservation.email?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesDateFilter = dateFilter
+        ? reservation.timeSlot?.date === dateFilter
+        : true;
+      const matchesScenarioFilter = scenarioFilter
+        ? reservation.scenario?.name?.toLowerCase() ===
+          scenarioFilter.toLowerCase()
+        : true;
 
-    return matchesSearchQuery && matchesStatusFilter && matchesDateFilter;
-  });
+      return matchesSearchQuery && matchesDateFilter && matchesScenarioFilter;
+    }) || [];
 
   // Pagination logic
   const indexOfLastReservation = currentPage * reservationsPerPage;
   const indexOfFirstReservation = indexOfLastReservation - reservationsPerPage;
-  const currentReservations = filteredReservations.slice(indexOfFirstReservation, indexOfLastReservation);
+  const currentReservations = filteredReservations.slice(
+    indexOfFirstReservation,
+    indexOfLastReservation
+  );
+  const totalPages = Math.ceil(
+    filteredReservations.length / reservationsPerPage
+  );
 
-  const totalPages = Math.ceil(filteredReservations.length / reservationsPerPage);
-
-  // Handle page change
   const handlePageChange = (page) => {
     setCurrentPage(page);
   };
@@ -99,6 +103,32 @@ const ReservationsPage = () => {
   return (
     <div className="p-4">
       <h1 className="text-2xl font-bold mb-6">Reservations</h1>
+
+      {/* Filter Buttons for Table Selection */}
+      <div className="mb-6 flex space-x-4">
+        {["reservations", "approvedReservations", "declinedReservations"].map(
+          (table) => (
+            <button
+              key={table}
+              onClick={() => {
+                setCurrentTable(table);
+                setCurrentPage(1); // Reset to the first page
+              }}
+              className={`px-4 py-2 rounded-md ${
+                currentTable === table
+                  ? "bg-blue-500 text-white"
+                  : "bg-gray-200 hover:bg-gray-300"
+              }`}
+            >
+              {table === "reservations"
+                ? "Pending Reservations"
+                : table === "approvedReservations"
+                ? "Approved Reservations"
+                : "Declined Reservations"}
+            </button>
+          )
+        )}
+      </div>
 
       {/* Search Bar */}
       <div className="mb-4">
@@ -111,18 +141,15 @@ const ReservationsPage = () => {
         />
       </div>
 
-      {/* Status Filter */}
+      {/* Scenario Filter */}
       <div className="mb-4">
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+        <input
+          type="text"
+          placeholder="Filter by scenario"
+          value={scenarioFilter}
+          onChange={(e) => setScenarioFilter(e.target.value)}
           className="w-full px-4 py-2 border border-gray-300 rounded-md"
-        >
-          <option value="">All Statuses</option>
-          <option value="approved">Approved</option>
-          <option value="pending">Pending</option>
-          <option value="declined">Declined</option>
-        </select>
+        />
       </div>
 
       {/* Date Filter for Time Slot Date */}
@@ -145,7 +172,6 @@ const ReservationsPage = () => {
               <th className="px-4 py-2 border">Scenario</th>
               <th className="px-4 py-2 border">Chapter</th>
               <th className="px-4 py-2 border">Time Slot</th>
-              <th className="px-4 py-2 border">Status</th>
               <th className="px-4 py-2 border">Actions</th>
             </tr>
           </thead>
@@ -155,36 +181,82 @@ const ReservationsPage = () => {
                 <td className="px-4 py-2 border">{reservation.name}</td>
                 <td className="px-4 py-2 border">{reservation.email}</td>
                 <td className="px-4 py-2 border">{reservation.phone}</td>
-                <td className="px-4 py-2 border">{reservation.scenario?.name || "N/A"}</td>
-                <td className="px-4 py-2 border">{reservation.chapter?.name || "N/A"}</td>
+                <td className="px-4 py-2 border">
+                  {reservation.scenario?.name || "N/A"}
+                </td>
+                <td className="px-4 py-2 border">
+                  {reservation.chapter?.name || "N/A"}
+                </td>
                 <td className="px-4 py-2 border">
                   {reservation.timeSlot
-                    ? `${formatTime(reservation.timeSlot.startTime)} - ${formatTime(
-                        reservation.timeSlot.endTime
-                      )}`
+                    ? `${formatTime(
+                        reservation.timeSlot.startTime
+                      )} - ${formatTime(reservation.timeSlot.endTime)}`
                     : "No time slot"}
                 </td>
-                <td className="px-4 py-2 border">{reservation.status}</td>
                 <td className="px-4 py-2 border flex space-x-2">
-                  {/* Approve Button */}
+                  {currentTable === "reservations" && (
+                    <>
+                      <LoaderButton
+                        onClick={() =>
+                          handleUpdateStatus(
+                            reservation._id,
+                            "approved",
+                            currentTable
+                          )
+                        }
+                        isLoading={loading[reservation._id]}
+                        className="bg-green-500 text-white px-2 py-1 rounded-md hover:bg-green-600"
+                      >
+                        <FaCheck />
+                      </LoaderButton>
+                      <LoaderButton
+                        onClick={() =>
+                          handleUpdateStatus(
+                            reservation._id,
+                            "declined",
+                            currentTable
+                          )
+                        }
+                        isLoading={loading[reservation._id]}
+                        className="bg-yellow-500 text-white px-2 py-1 rounded-md hover:bg-yellow-600"
+                      >
+                        <FaTimes />
+                      </LoaderButton>
+                    </>
+                  )}
+                  {currentTable === "approvedReservations" && (
+                    <LoaderButton
+                      onClick={() =>
+                        handleUpdateStatus(
+                          reservation._id,
+                          "declined",
+                          currentTable
+                        )
+                      }
+                      isLoading={loading[reservation._id]}
+                      className="bg-yellow-500 text-white px-2 py-1 rounded-md hover:bg-yellow-600"
+                    >
+                      <FaTimes />
+                    </LoaderButton>
+                  )}
+                  {currentTable === "declinedReservations" && (
+                    <LoaderButton
+                      onClick={() =>
+                        handleUpdateStatus(
+                          reservation._id,
+                          "approved",
+                          currentTable
+                        )
+                      }
+                      isLoading={loading[reservation._id]}
+                      className="bg-green-500 text-white px-2 py-1 rounded-md hover:bg-green-600"
+                    >
+                      <FaCheck />
+                    </LoaderButton>
+                  )}
                   <LoaderButton
-                    onClick={() => handleUpdateStatus(reservation._id, "approved")}
-                    isLoading={loading[reservation._id]}
-                    className="bg-green-500 text-white px-2 py-1 rounded-md hover:bg-green-600"
-                  >
-                    <FaCheck />
-                  </LoaderButton>
-                  {/* Decline Button */}
-                  <LoaderButton
-                    onClick={() => handleUpdateStatus(reservation._id, "declined")}
-                    isLoading={loading[reservation._id]}
-                    className="bg-yellow-500 text-white px-2 py-1 rounded-md hover:bg-yellow-600"
-                  >
-                    <FaTimes />
-                  </LoaderButton>
-                  {/* Delete Button */}
-                  <LoaderButton
-                    onClick={() => handleDelete(reservation._id)}
+                    onClick={() => handleDelete(reservation._id, currentTable)} // Pass source (currentTable)
                     isLoading={loading[reservation._id]}
                     className="bg-red-500 text-white px-2 py-1 rounded-md hover:bg-red-600"
                   >
