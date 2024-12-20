@@ -137,7 +137,9 @@ const ChaptersPage = () => {
             <tr>
               <th className="px-4 py-2 border">Name</th>
               <th className="px-4 py-2 border">Scenario</th>
-              <th className="px-4 py-2 border">Players</th>
+              <th className="px-4 py-2 border">Min Player</th>
+
+              <th className="px-4 py-2 border">Max Player</th>
               <th className="px-4 py-2 border">Time</th>
               <th className="px-4 py-2 border">Difficulty</th>
               <th className="px-1 py-2 border">percentage of Success </th>
@@ -150,7 +152,9 @@ const ChaptersPage = () => {
               <tr key={chapter._id} className="hover:bg-gray-100">
                 <td className="px-4 py-2 border">{chapter.name}</td>
                 <td className="px-4 py-2 border">{chapter.scenario?.name || 'N/A'}</td>
-                <td className="px-4 py-2 border">{chapter.playerNumber}</td>
+                <td className="px-4 py-2 border">{chapter.minPlayerNumber}</td>
+
+                <td className="px-4 py-2 border">{chapter.maxPlayerNumber}</td>
                 <td className="px-4 py-2 border">{chapter.time} mins</td>
                 <td className="px-4 py-2 border">{chapter.difficulty}</td>
                 <td className="px-4 py-2 border">{chapter.percentageOfSuccess}</td>

@@ -36,14 +36,14 @@ const AddTimeSlotModal = ({
       style={{ content: { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' } }}
     >
       <h2 className="text-2xl font-bold mb-4">Add Time Slots</h2>
-      <label className="block mb-2">From:</label>
+      <label className="block mb-2">From (Date):</label>
       <input
         type="date"
         value={dateRange.from}
         onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
         className="border px-4 py-2 w-full mb-4"
       />
-      <label className="block mb-2">To:</label>
+      <label className="block mb-2">To (Date):</label>
       <input
         type="date"
         value={dateRange.to}

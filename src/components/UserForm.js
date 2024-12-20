@@ -1,17 +1,30 @@
 import React, { useState } from 'react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
 
 const UserForm = ({ user, onSave, onClose }) => {
   const [formData, setFormData] = useState(
     user || { firstName: '', lastName: '', email: '', usertype: 'subadmin', newPassword: '' }
   );
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSave(formData);
+    setLoading(true);
+    try {
+      await onSave(formData); // Simulate save operation
+    } finally {
+      setLoading(false); // Ensure loading stops even if an error occurs
+    }
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword((prev) => !prev);
   };
 
   return (
@@ -56,21 +69,36 @@ const UserForm = ({ user, onSave, onClose }) => {
         </select>
 
         {/* Password Field for Admin */}
-        <input
-          type="password"
-          name="newPassword"
-          placeholder="New Password (Optional)"
-          value={formData.newPassword}
-          onChange={handleChange}
-          className="border p-2 mb-4 w-full"
-        />
+        <div className="relative">
+          <input
+            type={showPassword ? 'text' : 'password'}
+            name="newPassword"
+            placeholder="New Password (Optional)"
+            value={formData.newPassword}
+            onChange={handleChange}
+            className="border p-2 mb-4 w-full pr-10"
+          />
+          <button
+            type="button"
+            onClick={togglePasswordVisibility}
+            className="absolute right-2 top-3 text-gray-600"
+          >
+            <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} />
+          </button>
+        </div>
 
         <div className="flex justify-between">
           <button type="button" onClick={onClose} className="bg-gray-500 text-white px-4 py-2 rounded">
             Cancel
           </button>
-          <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">
-            Save
+          <button
+            type="submit"
+            className={`px-4 py-2 rounded ${
+              loading ? 'bg-gray-400 text-white' : 'bg-blue-500 text-white'
+            }`}
+            disabled={loading}
+          >
+            {loading ? 'Saving...' : 'Save'}
           </button>
         </div>
       </form>

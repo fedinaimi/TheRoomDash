@@ -4,18 +4,17 @@ const EditTimeSlotModal = ({ isOpen, onClose, editingSlot, onSave }) => {
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
 
-  // Populate fields when editingSlot changes
   useEffect(() => {
     if (editingSlot) {
-      setStartTime(editingSlot.startTime.slice(11, 16)); // Extract HH:mm from ISO string
-      setEndTime(editingSlot.endTime.slice(11, 16)); // Extract HH:mm from ISO string
+      setStartTime(editingSlot.startTime.slice(11, 16));
+      setEndTime(editingSlot.endTime.slice(11, 16));
     }
   }, [editingSlot]);
 
   const handleSave = () => {
     onSave({
       ...editingSlot,
-      startTime: `${editingSlot.date}T${startTime}:00Z`, // Reconstruct full ISO string
+      startTime: `${editingSlot.date}T${startTime}:00Z`,
       endTime: `${editingSlot.date}T${endTime}:00Z`,
     });
   };
