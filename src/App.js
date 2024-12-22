@@ -1,8 +1,10 @@
+// src/App.js
 import React, { Suspense } from 'react';
-import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import PrivateRoute from './components/PrivateRoute';
 import PublicRoute from './components/PublicRoute';
 import Navbar from './components/Dashboard/Navbar';
+import { isAuthenticated } from './services/authService'; // Import isAuthenticated
 
 // Lazy-loaded pages for better performance
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
@@ -17,14 +19,11 @@ const ResetPasswordPage = React.lazy(() => import('./pages/ResetPasswordPage'));
 const SettingsPage = React.lazy(() => import('./pages/SettingsPage'));
 
 const AppContent = () => {
-  const location = useLocation();
-
-  // Render Navbar conditionally based on route
-  const shouldShowNavbar = !['/login', '/forgot-password', '/reset-password'].includes(location.pathname);
+  const auth = isAuthenticated(); // Check if user is authenticated
 
   return (
     <>
-      {shouldShowNavbar && <Navbar />} {/* Navbar hidden on public routes */}
+      {auth && <Navbar />} {/* Render Navbar only if authenticated */}
       <Routes>
         {/* Public Routes */}
         <Route
@@ -44,7 +43,7 @@ const AppContent = () => {
           }
         />
         <Route
-          path="/reset-password"
+          path="/reset-password/:token"
           element={
             <PublicRoute>
               <ResetPasswordPage />
@@ -65,7 +64,8 @@ const AppContent = () => {
           <Route path="users" element={<UsersPage />} />
           <Route path="scenarios" element={<ScenariosPage />} />
           <Route path="chapters" element={<ChaptersPage />} />
-          <Route path="reservations" element={<ReservationsPage />} />
+          <Route path="reservations/:id" element={<ReservationsPage />} /> {/* Dynamic Reservation ID */}
+          <Route path="reservations" element={<ReservationsPage />} /> {/* General Reservations */}
           <Route path="timeslots" element={<TimeSlotPage />} />
           <Route path="settings" element={<SettingsPage />} /> {/* Settings Page */}
         </Route>
@@ -80,7 +80,7 @@ const AppContent = () => {
 const App = () => {
   return (
     <Router>
-      <Suspense fallback={<div>Loading...</div>}>
+      <Suspense fallback={<div className="flex justify-center items-center h-screen">Loading...</div>}>
         <AppContent />
       </Suspense>
     </Router>
