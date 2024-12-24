@@ -1,3 +1,5 @@
+// src/components/ChapterForm.js
+
 import React, { useState, useEffect } from 'react';
 import { getAllScenarios } from '../services/scenarioService';
 import LoaderButton from './LoaderButton';
@@ -17,9 +19,11 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
     image: null,
     video: null,
     scenarioId: '',
+    price: '', // New Field
+    remisePercentagePerPerson: '', // New Field
   });
   const [errors, setErrors] = useState({});
-  const [isLoading, setIsLoading] = useState(false); // Add loader state
+  const [isLoading, setIsLoading] = useState(false); // Loader state
 
   useEffect(() => {
     async function fetchScenarios() {
@@ -38,7 +42,6 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
         minPlayerNumber: chapter.minPlayerNumber || '',
         maxPlayerNumber: chapter.maxPlayerNumber || '',
         percentageOfSuccess: chapter.percentageOfSuccess || '',
-
         time: chapter.time || '',
         difficulty: chapter.difficulty || '',
         description: chapter.description || '',
@@ -47,6 +50,8 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
         image: chapter.image || null,
         video: chapter.video || null,
         scenarioId: chapter.scenario?._id || '',
+        price: chapter.price || '', // Populate if editing
+        remisePercentagePerPerson: chapter.remisePercentagePerPerson || '', // Populate if editing
       });
     }
   }, [chapter]);
@@ -62,6 +67,8 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
     if (!formData.difficulty) newErrors.difficulty = 'Difficulty is required';
     if (!formData.description) newErrors.description = 'Description is required';
     if (!formData.place) newErrors.place = 'Place is required';
+    if (!formData.price && formData.price !== 0) newErrors.price = 'Price is required';
+    if (formData.remisePercentagePerPerson === '') newErrors.remisePercentagePerPerson = 'Remise Percentage is required';
 
     if (formData.minPlayerNumber && formData.maxPlayerNumber) {
       if (parseInt(formData.minPlayerNumber) > parseInt(formData.maxPlayerNumber)) {
@@ -73,6 +80,16 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
       if (formData.percentageOfSuccess < 0 || formData.percentageOfSuccess > 100) {
         newErrors.percentageOfSuccess = 'Percentage of success must be between 0 and 100';
       }
+    }
+
+    // Validate Price
+    if (formData.price !== '' && (isNaN(formData.price) || formData.price < 0)) {
+      newErrors.price = 'Price must be a non-negative number';
+    }
+
+    // Validate Remise Percentage
+    if (formData.remisePercentagePerPerson !== '' && (isNaN(formData.remisePercentagePerPerson) || formData.remisePercentagePerPerson < 0 || formData.remisePercentagePerPerson > 100)) {
+      newErrors.remisePercentagePerPerson = 'Remise Percentage must be between 0 and 100';
     }
 
     setErrors(newErrors);
@@ -118,7 +135,7 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             type="text"
             value={formData.name}
             onChange={handleChange}
-            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600"
+            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${errors.name ? 'border-red-500' : ''}`}
             placeholder="Chapter name"
           />
           {errors.name && <p className="text-red-500 text-sm">{errors.name}</p>}
@@ -131,7 +148,7 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             name="scenarioId"
             value={formData.scenarioId}
             onChange={handleChange}
-            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600"
+            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${errors.scenarioId ? 'border-red-500' : ''}`}
           >
             <option value="">Select a scenario</option>
             {scenarios.map((scenario) => (
@@ -143,7 +160,6 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
           {errors.scenarioId && <p className="text-red-500 text-sm">{errors.scenarioId}</p>}
         </div>
 
-
         {/* Min Player Number */}
         <div>
           <label className="block text-gray-700 font-bold mb-2">Min Player Number</label>
@@ -152,7 +168,7 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             type="number"
             value={formData.minPlayerNumber}
             onChange={handleChange}
-            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600"
+            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${errors.minPlayerNumber ? 'border-red-500' : ''}`}
             placeholder="Minimum players"
           />
           {errors.minPlayerNumber && (
@@ -168,13 +184,14 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             type="number"
             value={formData.maxPlayerNumber}
             onChange={handleChange}
-            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600"
+            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${errors.maxPlayerNumber ? 'border-red-500' : ''}`}
             placeholder="Maximum players"
           />
           {errors.maxPlayerNumber && (
             <p className="text-red-500 text-sm">{errors.maxPlayerNumber}</p>
           )}
         </div>
+
         {/* Percentage of Success */}
         <div>
           <label className="block text-gray-700 font-bold mb-2">Success Percentage</label>
@@ -183,11 +200,47 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             type="number"
             value={formData.percentageOfSuccess}
             onChange={handleChange}
-            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600"
+            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${errors.percentageOfSuccess ? 'border-red-500' : ''}`}
             placeholder="Success percentage"
+            min="0"
+            max="100"
           />
           {errors.percentageOfSuccess && (
             <p className="text-red-500 text-sm">{errors.percentageOfSuccess}</p>
+          )}
+        </div>
+
+        {/* Price */}
+        <div>
+          <label className="block text-gray-700 font-bold mb-2">Price</label>
+          <input
+            name="price"
+            type="number"
+            value={formData.price}
+            onChange={handleChange}
+            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${errors.price ? 'border-red-500' : ''}`}
+            placeholder="Enter price"
+            min="0"
+            step="0.01"
+          />
+          {errors.price && <p className="text-red-500 text-sm">{errors.price}</p>}
+        </div>
+
+        {/* Remise Percentage per Person */}
+        <div>
+          <label className="block text-gray-700 font-bold mb-2">Remise Percentage per Person</label>
+          <input
+            name="remisePercentagePerPerson"
+            type="number"
+            value={formData.remisePercentagePerPerson}
+            onChange={handleChange}
+            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${errors.remisePercentagePerPerson ? 'border-red-500' : ''}`}
+            placeholder="Enter remise percentage"
+            min="0"
+            max="100"
+          />
+          {errors.remisePercentagePerPerson && (
+            <p className="text-red-500 text-sm">{errors.remisePercentagePerPerson}</p>
           )}
         </div>
 
@@ -199,8 +252,9 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             type="number"
             value={formData.time}
             onChange={handleChange}
-            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600"
+            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${errors.time ? 'border-red-500' : ''}`}
             placeholder="Time in minutes"
+            min="0"
           />
           {errors.time && <p className="text-red-500 text-sm">{errors.time}</p>}
         </div>
@@ -212,7 +266,7 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             name="difficulty"
             value={formData.difficulty}
             onChange={handleChange}
-            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600"
+            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${errors.difficulty ? 'border-red-500' : ''}`}
           >
             <option value="">Select difficulty</option>
             <option value="easy">Easy</option>
@@ -229,8 +283,9 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             name="description"
             value={formData.description}
             onChange={handleChange}
-            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600"
+            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${errors.description ? 'border-red-500' : ''}`}
             placeholder="Describe the chapter"
+            rows="4"
           />
           {errors.description && <p className="text-red-500 text-sm">{errors.description}</p>}
         </div>
@@ -243,14 +298,14 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             type="text"
             value={formData.place}
             onChange={handleChange}
-            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600"
+            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${errors.place ? 'border-red-500' : ''}`}
             placeholder="Enter the location"
           />
           {errors.place && <p className="text-red-500 text-sm">{errors.place}</p>}
         </div>
 
-      {/* Image Upload */}
-      <div>
+        {/* Image Upload */}
+        <div>
           <label className="block text-gray-700 font-bold mb-2">Image</label>
           <input
             type="file"
@@ -261,6 +316,14 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
           {formData.image && formData.image instanceof File && (
             <img
               src={URL.createObjectURL(formData.image)}
+              alt="Chapter"
+              className="mt-2 h-32 w-full object-cover rounded-md"
+            />
+          )}
+          {/* Display existing image if editing and no new image is uploaded */}
+          {chapter && formData.image && typeof formData.image === 'string' && (
+            <img
+              src={formData.image}
               alt="Chapter"
               className="mt-2 h-32 w-full object-cover rounded-md"
             />
@@ -280,6 +343,14 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             <div className="mt-2 max-w-xs max-h-[150px] overflow-hidden rounded-md mx-auto">
               <video controls className="h-full w-full object-contain">
                 <source src={URL.createObjectURL(formData.video)} type="video/mp4" />
+              </video>
+            </div>
+          )}
+          {/* Display existing video if editing and no new video is uploaded */}
+          {chapter && formData.video && typeof formData.video === 'string' && (
+            <div className="mt-2 max-w-xs max-h-[150px] overflow-hidden rounded-md mx-auto">
+              <video controls className="h-full w-full object-contain">
+                <source src={formData.video} type="video/mp4" />
               </video>
             </div>
           )}

@@ -1,3 +1,5 @@
+// src/pages/ChaptersPage.js
+
 import React, { useState, useEffect } from 'react';
 import { FaTrash, FaPlus, FaEdit, FaEye } from 'react-icons/fa';
 import {
@@ -87,7 +89,9 @@ const ChaptersPage = () => {
   // Filter chapters based on the search query
   const filteredChapters = chapters.filter((chapter) =>
     chapter.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    chapter.scenario?.name.toLowerCase().includes(searchQuery.toLowerCase())
+    chapter.scenario?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    chapter.price.toString().includes(searchQuery) ||
+    chapter.remisePercentagePerPerson.toString().includes(searchQuery)
   );
 
   // Pagination logic
@@ -114,7 +118,7 @@ const ChaptersPage = () => {
       <div className="mb-4">
         <input
           type="text"
-          placeholder="Search by chapter name or scenario"
+          placeholder="Search by chapter name, scenario, price, or remise"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full px-4 py-2 border border-gray-300 rounded-md"
@@ -125,7 +129,7 @@ const ChaptersPage = () => {
       <LoaderButton
         onClick={() => setIsFormOpen(true)}
         isLoading={loading.add}
-        className="bg-green-500 text-white px-4 py-2 rounded-md mb-4 hover:bg-green-600 transition duration-200"
+        className="bg-green-500 text-white px-4 py-2 rounded-md mb-4 hover:bg-green-600 transition duration-200 flex items-center"
       >
         <FaPlus className="inline mr-2" /> Add Chapter
       </LoaderButton>
@@ -138,12 +142,12 @@ const ChaptersPage = () => {
               <th className="px-4 py-2 border">Name</th>
               <th className="px-4 py-2 border">Scenario</th>
               <th className="px-4 py-2 border">Min Player</th>
-
               <th className="px-4 py-2 border">Max Player</th>
               <th className="px-4 py-2 border">Time</th>
               <th className="px-4 py-2 border">Difficulty</th>
-              <th className="px-1 py-2 border">percentage of Success </th>
-
+              <th className="px-4 py-2 border">Success %</th>
+              <th className="px-4 py-2 border">Price</th> {/* New Column */}
+              <th className="px-4 py-2 border">Remise %</th> {/* New Column */}
               <th className="px-4 py-2 border">Actions</th>
             </tr>
           </thead>
@@ -153,12 +157,12 @@ const ChaptersPage = () => {
                 <td className="px-4 py-2 border">{chapter.name}</td>
                 <td className="px-4 py-2 border">{chapter.scenario?.name || 'N/A'}</td>
                 <td className="px-4 py-2 border">{chapter.minPlayerNumber}</td>
-
                 <td className="px-4 py-2 border">{chapter.maxPlayerNumber}</td>
                 <td className="px-4 py-2 border">{chapter.time} mins</td>
                 <td className="px-4 py-2 border">{chapter.difficulty}</td>
-                <td className="px-4 py-2 border">{chapter.percentageOfSuccess}</td>
-
+                <td className="px-4 py-2 border">{chapter.percentageOfSuccess}%</td>
+                <td className="px-4 py-2 border">{chapter.price} TND</td> {/* Display Price */}
+                <td className="px-4 py-2 border">{chapter.remisePercentagePerPerson}%</td> {/* Display Remise */}
                 <td className="px-4 py-2 border flex space-x-2">
                   <LoaderButton
                     onClick={() => {
@@ -222,7 +226,7 @@ const ChaptersPage = () => {
 
       {/* Add/Edit Chapter Modal */}
       {isFormOpen && (
-        <div className="fixed inset-0 flex justify-center items-center z-50 bg-black bg-opacity-50">
+        <div className="fixed inset-0 flex justify-center items-center z-50 bg-black bg-opacity-50 overflow-auto">
           <ChapterForm
             onSubmit={editChapter ? handleUpdateChapter : handleAddChapter}
             onClose={handleCloseForm}
@@ -233,7 +237,7 @@ const ChaptersPage = () => {
 
       {/* Chapter Details Modal */}
       {isDetailsOpen && selectedChapter && (
-        <div className="fixed inset-0 flex justify-center items-center z-50 bg-black bg-opacity-50">
+        <div className="fixed inset-0 flex justify-center items-center z-50 bg-black bg-opacity-50 overflow-auto">
           <ChapterDetails
             chapter={selectedChapter}
             onClose={() => {

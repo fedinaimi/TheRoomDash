@@ -13,6 +13,8 @@ import { fetchProfile } from "../services/userService"; // Service to fetch curr
 import { FaCheck, FaTimes, FaTrash, FaPlus } from "react-icons/fa"; // Added FaPlus for Add Reservation button
 import LoaderButton from "../components/LoaderButton"; // Reusable button with loading indicator
 import { useParams } from "react-router-dom"; // Import useParams
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 
 const ReservationsPage = () => {
   const { id: reservationIdFromRoute } = useParams(); // Get reservation ID from route
@@ -256,7 +258,8 @@ const ReservationsPage = () => {
   };
 
   // CSV Export Logic
-  const exportToCSV = (reservations, filename) => {
+  const exportToXLSX = (reservations, filename) => {
+    // Define the headers
     const headers = [
       "Name",
       "Email",
@@ -266,34 +269,41 @@ const ReservationsPage = () => {
       "Chapter",
       "Time Slot Start",
       "Time Slot End",
-      "Language", // Added Language header
+      "Language",
       "Status",
     ];
-    const rows = reservations.map((r) => [
-      r.name,
-      r.email,
-      r.phone,
-      r.people,
-      r.scenario?.name || "",
-      r.chapter?.name || "",
-      r.timeSlot ? new Date(r.timeSlot.startTime).toLocaleString() : "",
-      r.timeSlot ? new Date(r.timeSlot.endTime).toLocaleString() : "",
-      r.language ? r.language.toUpperCase() : "", // Added Language data
-      r.status || "",
-    ]);
-
-    let csvContent =
-      "data:text/csv;charset=utf-8," +
-      [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", filename);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  
+    // Map reservation data to rows
+    const rows = reservations.map((r) => ({
+      Name: r.name,
+      Email: r.email,
+      Phone: r.phone,
+      Players: r.people,
+      Scenario: r.scenario?.name || "",
+      Chapter: r.chapter?.name || "",
+      "Time Slot Start": r.timeSlot ? new Date(r.timeSlot.startTime).toLocaleString() : "",
+      "Time Slot End": r.timeSlot ? new Date(r.timeSlot.endTime).toLocaleString() : "",
+      Language: r.language ? r.language.toUpperCase() : "",
+      Status: r.status || "",
+    }));
+  
+    // Create a worksheet
+    const worksheet = XLSX.utils.json_to_sheet(rows, { header: headers });
+  
+    // Create a new workbook and append the worksheet
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Reservations");
+  
+    // Generate buffer
+    const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+  
+    // Create a blob from the buffer
+    const data = new Blob([excelBuffer], { type: "application/octet-stream" });
+  
+    // Trigger file download
+    saveAs(data, filename);
   };
+  
 
   // Helper functions to get date ranges
   const getTodayFilter = () => {
@@ -553,24 +563,24 @@ const ReservationsPage = () => {
 
       {/* Export Buttons */}
       <div className="mb-4 flex space-x-4">
-        <button
-          onClick={() => exportToCSV(getTodayFilter(), "reservations_today.csv")}
-          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-        >
-          Export Today's Reservations (CSV)
-        </button>
-        <button
-          onClick={() => exportToCSV(getWeekFilter(), "reservations_week.csv")}
-          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-        >
-          Export This Week (CSV)
-        </button>
-        <button
-          onClick={() => exportToCSV(getMonthFilter(), "reservations_month.csv")}
-          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-        >
-          Export This Month (CSV)
-        </button>
+      <button
+    onClick={() => exportToXLSX(getTodayFilter(), "reservations_today.xlsx")}
+    className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+  >
+    Export Today's Reservations (XLSX)
+  </button>
+  <button
+    onClick={() => exportToXLSX(getWeekFilter(), "reservations_week.xlsx")}
+    className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+  >
+    Export This Week (XLSX)
+  </button>
+  <button
+    onClick={() => exportToXLSX(getMonthFilter(), "reservations_month.xlsx")}
+    className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+  >
+    Export This Month (XLSX)
+  </button>
       </div>
 
       {/* Bulk Actions for Admin */}
