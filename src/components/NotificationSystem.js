@@ -216,7 +216,13 @@ const NotificationSystem = () => {
                     </p>
                     <p>
                       <strong>Chapter:</strong> {notification.details.chapter}
+
                     </p>
+                    <p>
+  <strong>Created At:</strong> {new Date(notification.createdAt).toLocaleString()}
+</p>
+
+                    
                     <p>
                       <strong>Time Slot:</strong>{" "}
                       {notification.details.timeSlot

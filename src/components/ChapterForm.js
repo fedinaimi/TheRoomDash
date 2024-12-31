@@ -32,6 +32,7 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
         setScenarios(scenariosData);
       } catch (error) {
         console.error('Error fetching scenarios:', error);
+        alert('Failed to fetch scenarios. Please try again later.');
       }
     }
     fetchScenarios();
@@ -47,8 +48,8 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
         description: chapter.description || '',
         comment: chapter.comment || '',
         place: chapter.place || '',
-        image: chapter.image || null,
-        video: chapter.video || null,
+        image: chapter.image || null, // Existing image URL
+        video: chapter.video || null, // Existing video URL
         scenarioId: chapter.scenario?._id || '',
         price: chapter.price || '', // Populate if editing
         remisePercentagePerPerson: chapter.remisePercentagePerPerson || '', // Populate if editing
@@ -67,8 +68,9 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
     if (!formData.difficulty) newErrors.difficulty = 'Difficulty is required';
     if (!formData.description) newErrors.description = 'Description is required';
     if (!formData.place) newErrors.place = 'Place is required';
-    if (!formData.price && formData.price !== 0) newErrors.price = 'Price is required';
-    if (formData.remisePercentagePerPerson === '') newErrors.remisePercentagePerPerson = 'Remise Percentage is required';
+    if (formData.price === '' || formData.price === null) newErrors.price = 'Price is required';
+    if (formData.remisePercentagePerPerson === '' || formData.remisePercentagePerPerson === null)
+      newErrors.remisePercentagePerPerson = 'Remise Percentage is required';
 
     if (formData.minPlayerNumber && formData.maxPlayerNumber) {
       if (parseInt(formData.minPlayerNumber) > parseInt(formData.maxPlayerNumber)) {
@@ -88,7 +90,12 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
     }
 
     // Validate Remise Percentage
-    if (formData.remisePercentagePerPerson !== '' && (isNaN(formData.remisePercentagePerPerson) || formData.remisePercentagePerPerson < 0 || formData.remisePercentagePerPerson > 100)) {
+    if (
+      formData.remisePercentagePerPerson !== '' &&
+      (isNaN(formData.remisePercentagePerPerson) ||
+        formData.remisePercentagePerPerson < 0 ||
+        formData.remisePercentagePerPerson > 100)
+    ) {
       newErrors.remisePercentagePerPerson = 'Remise Percentage must be between 0 and 100';
     }
 
@@ -114,7 +121,24 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
     if (validate()) {
       setIsLoading(true); // Start loader
       try {
-        await onSubmit(formData); // Simulate submission
+        // Prepare data to send
+        const submissionData = { ...formData };
+
+        // If a new file is uploaded, it's already in the formData
+        // If not, and editing, ensure to send the existing file URL as a string
+        if (chapter) {
+          if (!submissionData.image) {
+            submissionData.image = chapter.image;
+          }
+          if (!submissionData.video) {
+            submissionData.video = chapter.video;
+          }
+        }
+
+        await onSubmit(submissionData); // Simulate submission
+      } catch (error) {
+        console.error('Error submitting form:', error);
+        alert('Failed to submit form. Please try again.');
       } finally {
         setIsLoading(false); // Stop loader
       }
@@ -135,7 +159,9 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             type="text"
             value={formData.name}
             onChange={handleChange}
-            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${errors.name ? 'border-red-500' : ''}`}
+            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${
+              errors.name ? 'border-red-500' : ''
+            }`}
             placeholder="Chapter name"
           />
           {errors.name && <p className="text-red-500 text-sm">{errors.name}</p>}
@@ -148,7 +174,9 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             name="scenarioId"
             value={formData.scenarioId}
             onChange={handleChange}
-            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${errors.scenarioId ? 'border-red-500' : ''}`}
+            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${
+              errors.scenarioId ? 'border-red-500' : ''
+            }`}
           >
             <option value="">Select a scenario</option>
             {scenarios.map((scenario) => (
@@ -168,8 +196,11 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             type="number"
             value={formData.minPlayerNumber}
             onChange={handleChange}
-            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${errors.minPlayerNumber ? 'border-red-500' : ''}`}
+            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${
+              errors.minPlayerNumber ? 'border-red-500' : ''
+            }`}
             placeholder="Minimum players"
+            min="1"
           />
           {errors.minPlayerNumber && (
             <p className="text-red-500 text-sm">{errors.minPlayerNumber}</p>
@@ -184,8 +215,11 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             type="number"
             value={formData.maxPlayerNumber}
             onChange={handleChange}
-            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${errors.maxPlayerNumber ? 'border-red-500' : ''}`}
+            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${
+              errors.maxPlayerNumber ? 'border-red-500' : ''
+            }`}
             placeholder="Maximum players"
+            min="1"
           />
           {errors.maxPlayerNumber && (
             <p className="text-red-500 text-sm">{errors.maxPlayerNumber}</p>
@@ -200,7 +234,9 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             type="number"
             value={formData.percentageOfSuccess}
             onChange={handleChange}
-            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${errors.percentageOfSuccess ? 'border-red-500' : ''}`}
+            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${
+              errors.percentageOfSuccess ? 'border-red-500' : ''
+            }`}
             placeholder="Success percentage"
             min="0"
             max="100"
@@ -218,7 +254,9 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             type="number"
             value={formData.price}
             onChange={handleChange}
-            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${errors.price ? 'border-red-500' : ''}`}
+            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${
+              errors.price ? 'border-red-500' : ''
+            }`}
             placeholder="Enter price"
             min="0"
             step="0.01"
@@ -234,7 +272,9 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             type="number"
             value={formData.remisePercentagePerPerson}
             onChange={handleChange}
-            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${errors.remisePercentagePerPerson ? 'border-red-500' : ''}`}
+            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${
+              errors.remisePercentagePerPerson ? 'border-red-500' : ''
+            }`}
             placeholder="Enter remise percentage"
             min="0"
             max="100"
@@ -252,9 +292,11 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             type="number"
             value={formData.time}
             onChange={handleChange}
-            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${errors.time ? 'border-red-500' : ''}`}
+            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${
+              errors.time ? 'border-red-500' : ''
+            }`}
             placeholder="Time in minutes"
-            min="0"
+            min="1"
           />
           {errors.time && <p className="text-red-500 text-sm">{errors.time}</p>}
         </div>
@@ -266,7 +308,9 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             name="difficulty"
             value={formData.difficulty}
             onChange={handleChange}
-            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${errors.difficulty ? 'border-red-500' : ''}`}
+            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${
+              errors.difficulty ? 'border-red-500' : ''
+            }`}
           >
             <option value="">Select difficulty</option>
             <option value="easy">Easy</option>
@@ -283,7 +327,9 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             name="description"
             value={formData.description}
             onChange={handleChange}
-            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${errors.description ? 'border-red-500' : ''}`}
+            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${
+              errors.description ? 'border-red-500' : ''
+            }`}
             placeholder="Describe the chapter"
             rows="4"
           />
@@ -298,7 +344,9 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             type="text"
             value={formData.place}
             onChange={handleChange}
-            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${errors.place ? 'border-red-500' : ''}`}
+            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${
+              errors.place ? 'border-red-500' : ''
+            }`}
             placeholder="Enter the location"
           />
           {errors.place && <p className="text-red-500 text-sm">{errors.place}</p>}
@@ -313,6 +361,7 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             onChange={(e) => handleFileChange(e, 'image')}
             className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600"
           />
+          {/* Preview for new image upload */}
           {formData.image && formData.image instanceof File && (
             <img
               src={URL.createObjectURL(formData.image)}
@@ -323,7 +372,7 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
           {/* Display existing image if editing and no new image is uploaded */}
           {chapter && formData.image && typeof formData.image === 'string' && (
             <img
-              src={formData.image}
+              src={`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000'}${formData.image}`}
               alt="Chapter"
               className="mt-2 h-32 w-full object-cover rounded-md"
             />
@@ -339,6 +388,7 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             onChange={(e) => handleFileChange(e, 'video')}
             className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600"
           />
+          {/* Preview for new video upload */}
           {formData.video && formData.video instanceof File && (
             <div className="mt-2 max-w-xs max-h-[150px] overflow-hidden rounded-md mx-auto">
               <video controls className="h-full w-full object-contain">
@@ -350,7 +400,7 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
           {chapter && formData.video && typeof formData.video === 'string' && (
             <div className="mt-2 max-w-xs max-h-[150px] overflow-hidden rounded-md mx-auto">
               <video controls className="h-full w-full object-contain">
-                <source src={formData.video} type="video/mp4" />
+                <source src={`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000'}${formData.video}`} type="video/mp4" />
               </video>
             </div>
           )}

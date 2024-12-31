@@ -17,7 +17,7 @@ const LoginPage = () => {
 
     try {
       await login(email, password);
-      navigate('/dashboard'); // Redirect to dashboard on successful login
+      navigate('/dashboard/reservations'); // Redirect to dashboard on successful login
     } catch (error) {
       setError('Invalid email or password');
     } finally {

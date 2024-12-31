@@ -1,3 +1,5 @@
+// src/components/ChapterDetails.js
+
 import React from 'react';
 import {
   FaUsers,
@@ -12,6 +14,11 @@ import {
 const ChapterDetails = ({ chapter, onClose }) => {
   if (!chapter) return null;
 
+  const baseURL = process.env.REACT_APP_API_BASE_URL || 'http://192.168.1.43:5000';
+  const imageURL = `${baseURL.replace(/\/+$/, '')}/${chapter.image.replace(/^\/+/, '')}`;
+  const videoURL = `${baseURL.replace(/\/+$/, '')}/${chapter.video.replace(/^\/+/, '')}`;
+  
+
   return (
     <div className="bg-white p-6 rounded-md w-full max-w-2xl mx-auto md:mx-4 lg:mx-auto shadow-lg animate-fade-in overflow-auto max-h-[90vh]">
       <h2 className="text-2xl font-bold mb-4 text-center">{chapter.name}</h2>
@@ -22,7 +29,7 @@ const ChapterDetails = ({ chapter, onClose }) => {
           <div className="h-48 w-full">
             <FaImage className="inline-block mr-2" />
             <img
-              src={chapter.image}
+              src={imageURL}
               alt="Chapter"
               className="h-full w-full object-cover mt-2 rounded-md"
             />
@@ -30,12 +37,17 @@ const ChapterDetails = ({ chapter, onClose }) => {
         )}
 
         {/* Video */}
-        {chapter.video && (
+        {chapter.video ? (
           <div className="h-48 w-full">
             <FaVideo className="inline-block mr-2" />
             <video controls className="h-full w-full object-cover mt-2 rounded-md">
-              <source src={chapter.video} type="video/mp4" />
+            <source src={videoURL} type="video/mp4" />
+            Your browser does not support the video tag.
             </video>
+          </div>
+        ) : (
+          <div className="h-48 w-full flex items-center justify-center bg-gray-100 rounded-md">
+            <p className="text-gray-500">No video available for this chapter.</p>
           </div>
         )}
       </div>
@@ -45,24 +57,14 @@ const ChapterDetails = ({ chapter, onClose }) => {
         <p className="mb-2 flex items-center">
           <FaBook className="inline-block mr-2" />
           <strong>Scenario:</strong>
-          <span className="ml-1">{chapter.scenario.name}</span>
+          <span className="ml-1">{chapter.scenario?.name || 'N/A'}</span>
         </p>
 
         {/* Players */}
         <p className="mb-2 flex items-center">
           <FaUsers className="inline-block mr-2" />
           <strong>Players:</strong>
-          <span className="ml-1">{chapter.playerNumber}</span>
-        </p>
-        <p className="mb-2 flex items-center">
-          <FaUsers className="inline-block mr-2" />
-          <strong>Max Players:</strong>
-          <span className="ml-1">{chapter. maxPlayerNumber}</span>
-        </p>
-        <p className="mb-2 flex items-center">
-          <FaUsers className="inline-block mr-2" />
-          <strong>Min Players:</strong>
-          <span className="ml-1">{chapter. minPlayerNumber}</span>
+          <span className="ml-1">{chapter.minPlayerNumber} - {chapter.maxPlayerNumber}</span>
         </p>
        
         {/* Time */}
@@ -76,7 +78,7 @@ const ChapterDetails = ({ chapter, onClose }) => {
         <p className="mb-2 flex items-center">
           <FaInfoCircle className="inline-block mr-2" />
           <strong>Difficulty:</strong>
-          <span className="ml-1">{chapter.difficulty}</span>
+          <span className="ml-1 capitalize">{chapter.difficulty}</span>
         </p>
 
         {/* Place */}
@@ -84,6 +86,20 @@ const ChapterDetails = ({ chapter, onClose }) => {
           <FaMapMarkerAlt className="inline-block mr-2" />
           <strong>Place:</strong>
           <span className="ml-1">{chapter.place}</span>
+        </p>
+
+        {/* Price */}
+        <p className="mb-2 flex items-center">
+          <FaInfoCircle className="inline-block mr-2" />
+          <strong>Price:</strong>
+          <span className="ml-1">{chapter.price} TND</span>
+        </p>
+
+        {/* Remise Percentage per Person */}
+        <p className="mb-2 flex items-center">
+          <FaInfoCircle className="inline-block mr-2" />
+          <strong>Remise % per Person:</strong>
+          <span className="ml-1">{chapter.remisePercentagePerPerson}%</span>
         </p>
 
         {/* Description */}

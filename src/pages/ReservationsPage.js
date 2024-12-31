@@ -34,6 +34,7 @@ const ReservationsPage = () => {
   const [reservationsPerPage] = useState(10);
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState("");
+  const [createdAtFilter, setCreatedAtFilter] = useState(""); // New CreatedAt Filter
   const [scenarioFilter, setScenarioFilter] = useState("");
   const [languageFilter, setLanguageFilter] = useState(""); // New Language Filter
 
@@ -97,12 +98,23 @@ const ReservationsPage = () => {
     }
   };
 
+  // Helper function to format timeSlot times
   const toLocalTimeString = (isoString) => {
     try {
-      return new Date(isoString).toLocaleString(); // local time
+      return new Date(isoString).toLocaleString("fr-FR", { timeZone: "Africa/Tunis" }); // local time with specific locale and timezone
     } catch (error) {
       console.error("Error formatting time:", error);
       return "Invalid time";
+    }
+  };
+
+  // Helper function to format createdAt
+  const formatCreatedAt = (isoString) => {
+    try {
+      return new Date(isoString).toLocaleString("fr-FR", { timeZone: "Africa/Tunis" });
+    } catch (error) {
+      console.error("Error formatting createdAt:", error);
+      return "Invalid date";
     }
   };
 
@@ -175,14 +187,21 @@ const ReservationsPage = () => {
       const matchesSearchQuery =
         reservation.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         reservation.email?.toLowerCase().includes(searchQuery.toLowerCase());
+
       const matchesDateFilter = dateFilter
         ? new Date(reservation.timeSlot.startTime).toISOString().split("T")[0] === dateFilter
         : true;
+
+      const matchesCreatedAtFilter = createdAtFilter
+        ? new Date(reservation.createdAt).toISOString().split("T")[0] === createdAtFilter
+        : true;
+
       const matchesScenarioFilter = scenarioFilter
         ? reservation.scenario?.name?.toLowerCase().includes(
             scenarioFilter.toLowerCase()
           )
         : true;
+
       const matchesLanguageFilter = languageFilter
         ? reservation.language?.toUpperCase() === languageFilter.toUpperCase()
         : true;
@@ -190,18 +209,26 @@ const ReservationsPage = () => {
       return (
         matchesSearchQuery &&
         matchesDateFilter &&
+        matchesCreatedAtFilter &&
         matchesScenarioFilter &&
         matchesLanguageFilter
       );
     }) || [];
 
+  // Sort the filteredReservations by timeSlot.endTime descending (most recent passed first)
+  const sortedReservations = filteredReservations.sort((a, b) => {
+    const aEnd = a.timeSlot ? new Date(a.timeSlot.endTime) : new Date(0);
+    const bEnd = b.timeSlot ? new Date(b.timeSlot.endTime) : new Date(0);
+    return bEnd - aEnd; // Descending order
+  });
+
   const indexOfLastReservation = currentPage * reservationsPerPage;
   const indexOfFirstReservation = indexOfLastReservation - reservationsPerPage;
-  const currentReservations = filteredReservations.slice(
+  const currentReservations = sortedReservations.slice(
     indexOfFirstReservation,
     indexOfLastReservation
   );
-  const totalPages = Math.ceil(filteredReservations.length / reservationsPerPage);
+  const totalPages = Math.ceil(sortedReservations.length / reservationsPerPage);
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
@@ -214,7 +241,7 @@ const ReservationsPage = () => {
   const canBulkAction =
     role === "admin" &&
     currentTable !== "deletedReservations" &&
-    filteredReservations.length > 0;
+    sortedReservations.length > 0;
 
   const canActOnIndividual =
     (role === "admin" && currentTable !== "deletedReservations") ||
@@ -238,11 +265,11 @@ const ReservationsPage = () => {
 
   const getBulkReservations = () => {
     if (selectedReservations.length > 0) {
-      return filteredReservations.filter((r) =>
+      return sortedReservations.filter((r) =>
         selectedReservations.includes(r._id)
       );
     } else {
-      return filteredReservations;
+      return sortedReservations;
     }
   };
 
@@ -271,8 +298,9 @@ const ReservationsPage = () => {
       "Time Slot End",
       "Language",
       "Status",
+      "Created At", // Include Created At in export
     ];
-  
+
     // Map reservation data to rows
     const rows = reservations.map((r) => ({
       Name: r.name,
@@ -281,34 +309,34 @@ const ReservationsPage = () => {
       Players: r.people,
       Scenario: r.scenario?.name || "",
       Chapter: r.chapter?.name || "",
-      "Time Slot Start": r.timeSlot ? new Date(r.timeSlot.startTime).toLocaleString() : "",
-      "Time Slot End": r.timeSlot ? new Date(r.timeSlot.endTime).toLocaleString() : "",
+      "Time Slot Start": r.timeSlot ? new Date(r.timeSlot.startTime).toLocaleString("fr-FR", { timeZone: "Africa/Tunis" }) : "",
+      "Time Slot End": r.timeSlot ? new Date(r.timeSlot.endTime).toLocaleString("fr-FR", { timeZone: "Africa/Tunis" }) : "",
       Language: r.language ? r.language.toUpperCase() : "",
       Status: r.status || "",
+      "Created At": r.createdAt ? new Date(r.createdAt).toLocaleString("fr-FR", { timeZone: "Africa/Tunis" }) : "",
     }));
-  
+
     // Create a worksheet
     const worksheet = XLSX.utils.json_to_sheet(rows, { header: headers });
-  
+
     // Create a new workbook and append the worksheet
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Reservations");
-  
+
     // Generate buffer
     const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-  
+
     // Create a blob from the buffer
     const data = new Blob([excelBuffer], { type: "application/octet-stream" });
-  
+
     // Trigger file download
     saveAs(data, filename);
   };
-  
 
   // Helper functions to get date ranges
   const getTodayFilter = () => {
     const today = new Date().toISOString().split("T")[0];
-    return filteredReservations.filter(
+    return sortedReservations.filter(
       (r) => new Date(r.timeSlot.startTime).toISOString().split("T")[0] === today
     );
   };
@@ -321,7 +349,7 @@ const ReservationsPage = () => {
     const endOfWeek = new Date(startOfWeek);
     endOfWeek.setDate(startOfWeek.getDate() + 7);
 
-    return filteredReservations.filter((r) => {
+    return sortedReservations.filter((r) => {
       const startTime = r.timeSlot ? new Date(r.timeSlot.startTime) : null;
       return startTime && startTime >= startOfWeek && startTime < endOfWeek;
     });
@@ -332,7 +360,7 @@ const ReservationsPage = () => {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
-    return filteredReservations.filter((r) => {
+    return sortedReservations.filter((r) => {
       const startTime = r.timeSlot ? new Date(r.timeSlot.startTime) : null;
       return startTime && startTime >= startOfMonth && startTime < endOfMonth;
     });
@@ -527,60 +555,104 @@ const ReservationsPage = () => {
       </div>
 
       {/* Filters */}
-      <div className="mb-4 grid grid-cols-1 md:grid-cols-4 gap-4">
-        <input
-          type="text"
-          placeholder="Search by name or email"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-md"
-        />
-        <input
-          type="date"
-          value={dateFilter}
-          onChange={(e) => setDateFilter(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-md"
-        />
-        <input
-          type="text"
-          placeholder="Filter by scenario"
-          value={scenarioFilter}
-          onChange={(e) => setScenarioFilter(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-md"
-        />
-        {/* New Language Filter */}
-        <select
-          value={languageFilter}
-          onChange={(e) => setLanguageFilter(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-md"
-        >
-          <option value="">All Languages</option>
-          <option value="EN">English</option>
-          <option value="FR">French</option>
-          {/* Add more languages as needed */}
-        </select>
+      <div className="mb-4 grid grid-cols-1 md:grid-cols-5 gap-4">
+        {/* Search Filter */}
+        <div>
+          <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">
+            Search by Name or Email
+          </label>
+          <input
+            type="text"
+            id="search"
+            placeholder="Enter name or email"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-md"
+          />
+        </div>
+
+        {/* Time Slot Start Date Filter */}
+        <div>
+          <label htmlFor="dateFilter" className="block text-sm font-medium text-gray-700 mb-1">
+            Filter by Time Slot Start Date
+          </label>
+          <input
+            type="date"
+            id="dateFilter"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-md"
+          />
+        </div>
+
+        {/* Created At Date Filter */}
+        <div>
+          <label htmlFor="createdAtFilter" className="block text-sm font-medium text-gray-700 mb-1">
+            Filter by Creation Date
+          </label>
+          <input
+            type="date"
+            id="createdAtFilter"
+            value={createdAtFilter}
+            onChange={(e) => setCreatedAtFilter(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-md"
+          />
+        </div>
+
+        {/* Scenario Filter */}
+        <div>
+          <label htmlFor="scenarioFilter" className="block text-sm font-medium text-gray-700 mb-1">
+            Filter by Scenario
+          </label>
+          <input
+            type="text"
+            id="scenarioFilter"
+            placeholder="Enter scenario name"
+            value={scenarioFilter}
+            onChange={(e) => setScenarioFilter(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-md"
+          />
+        </div>
+
+        {/* Language Filter */}
+        <div>
+          <label htmlFor="languageFilter" className="block text-sm font-medium text-gray-700 mb-1">
+            Filter by Language
+          </label>
+          <select
+            id="languageFilter"
+            value={languageFilter}
+            onChange={(e) => setLanguageFilter(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-md"
+          >
+            <option value="">All Languages</option>
+            <option value="EN">English</option>
+            <option value="FR">French</option>
+            {/* Add more languages as needed */}
+          </select>
+        </div>
       </div>
 
       {/* Export Buttons */}
       <div className="mb-4 flex space-x-4">
-      <button
-    onClick={() => exportToXLSX(getTodayFilter(), "reservations_today.xlsx")}
-    className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
-  >
-    Export Today's Reservations (XLSX)
-  </button>
-  <button
-    onClick={() => exportToXLSX(getWeekFilter(), "reservations_week.xlsx")}
-    className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
-  >
-    Export This Week (XLSX)
-  </button>
-  <button
-    onClick={() => exportToXLSX(getMonthFilter(), "reservations_month.xlsx")}
-    className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
-  >
-    Export This Month (XLSX)
-  </button>
+        <button
+          onClick={() => exportToXLSX(getTodayFilter(), "reservations_today.xlsx")}
+          className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+        >
+          Export Today's Reservations (XLSX)
+        </button>
+        <button
+          onClick={() => exportToXLSX(getWeekFilter(), "reservations_week.xlsx")}
+          className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+        >
+          Export This Week (XLSX)
+        </button>
+        <button
+          onClick={() => exportToXLSX(getMonthFilter(), "reservations_month.xlsx")}
+          className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+        >
+          Export This Month (XLSX)
+        </button>
       </div>
 
       {/* Bulk Actions for Admin */}
@@ -630,6 +702,7 @@ const ReservationsPage = () => {
               <th className="px-4 py-2 border">Time Slot</th>
               {/* New Language Column Header */}
               <th className="px-4 py-2 border">Language</th>
+              <th className="px-4 py-2 border">Created At</th> {/* Updated Header */}
               <th className="px-4 py-2 border">Actions</th>
             </tr>
           </thead>
@@ -637,7 +710,7 @@ const ReservationsPage = () => {
             {currentReservations.length === 0 && (
               <tr>
                 <td
-                  colSpan={canBulkAction ? 10 : 9} // Updated to include the new Language column
+                  colSpan={canBulkAction ? 11 : 10} // Updated to include the new Language and Created At columns
                   className="p-4 text-gray-500 text-sm text-center"
                 >
                   No reservations found.
@@ -686,6 +759,12 @@ const ReservationsPage = () => {
                   <td className="px-4 py-2 border">
                     {reservation.language
                       ? reservation.language.toUpperCase()
+                      : "N/A"}
+                  </td>
+                  {/* Formatted Created At */}
+                  <td className="px-4 py-2 border">
+                    {reservation.createdAt
+                      ? formatCreatedAt(reservation.createdAt)
                       : "N/A"}
                   </td>
                   <td className="px-4 py-2 border flex space-x-2">
@@ -885,9 +964,12 @@ const ReservationsPage = () => {
             <h2 className="text-xl font-bold mb-4">Add New Reservation</h2>
             <form onSubmit={handleAddFormSubmit}>
               <div className="mb-4">
-                <label className="block mb-1">Name:</label>
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                  Name:
+                </label>
                 <input
                   type="text"
+                  id="name"
                   name="name"
                   value={addFormData.name}
                   onChange={handleAddFormChange}
@@ -903,9 +985,12 @@ const ReservationsPage = () => {
               </div>
 
               <div className="mb-4">
-                <label className="block mb-1">Email:</label>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                  Email:
+                </label>
                 <input
                   type="email"
+                  id="email"
                   name="email"
                   value={addFormData.email}
                   onChange={handleAddFormChange}
@@ -921,9 +1006,12 @@ const ReservationsPage = () => {
               </div>
 
               <div className="mb-4">
-                <label className="block mb-1">Phone:</label>
+                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+                  Phone:
+                </label>
                 <div className="flex">
                   <select
+                    id="countryCode"
                     name="countryCode"
                     value={addFormData.countryCode}
                     onChange={handleAddFormChange}
@@ -938,6 +1026,7 @@ const ReservationsPage = () => {
                   </select>
                   <input
                     type="tel"
+                    id="phone"
                     name="phone"
                     value={addFormData.phone}
                     onChange={handleAddFormChange}
@@ -954,9 +1043,12 @@ const ReservationsPage = () => {
               </div>
 
               <div className="mb-4">
-                <label className="block mb-1">Number of People:</label>
+                <label htmlFor="people" className="block text-sm font-medium text-gray-700 mb-1">
+                  Number of People:
+                </label>
                 <input
                   type="number"
+                  id="people"
                   name="people"
                   value={addFormData.people}
                   onChange={handleAddFormChange}
@@ -973,8 +1065,11 @@ const ReservationsPage = () => {
               </div>
 
               <div className="mb-4">
-                <label className="block mb-1">Language:</label>
+                <label htmlFor="language" className="block text-sm font-medium text-gray-700 mb-1">
+                  Language:
+                </label>
                 <select
+                  id="language"
                   name="language"
                   value={addFormData.language}
                   onChange={handleAddFormChange}
@@ -987,8 +1082,11 @@ const ReservationsPage = () => {
               </div>
 
               <div className="mb-4">
-                <label className="block mb-1">Chapter:</label>
+                <label htmlFor="selectedChapter" className="block text-sm font-medium text-gray-700 mb-1">
+                  Chapter:
+                </label>
                 <select
+                  id="selectedChapter"
                   name="selectedChapter"
                   value={selectedChapter}
                   onChange={(e) => {
@@ -1021,9 +1119,12 @@ const ReservationsPage = () => {
               </div>
 
               <div className="mb-4">
-                <label className="block mb-1">Date:</label>
+                <label htmlFor="selectedDate" className="block text-sm font-medium text-gray-700 mb-1">
+                  Date:
+                </label>
                 <input
                   type="date"
+                  id="selectedDate"
                   name="selectedDate"
                   value={selectedDate}
                   onChange={handleAddFormChange}
@@ -1040,8 +1141,11 @@ const ReservationsPage = () => {
               </div>
 
               <div className="mb-4">
-                <label className="block mb-1">Time Slot:</label>
+                <label htmlFor="selectedTimeSlot" className="block text-sm font-medium text-gray-700 mb-1">
+                  Time Slot:
+                </label>
                 <select
+                  id="selectedTimeSlot"
                   name="selectedTimeSlot"
                   value={selectedTimeSlot}
                   onChange={handleAddFormChange}
@@ -1110,7 +1214,7 @@ const ReservationsPage = () => {
         </div>
       )}
 
-      {/* Confirmation Modal */}
+      {/* Reservation Details Component */}
       {confirmation && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-md shadow-lg w-96">
@@ -1216,6 +1320,12 @@ const ReservationDetails = ({ reservation, toLocalTimeString }) => (
         <strong>Status:</strong> {reservation.status}
       </p>
     )}
+    <p>
+      <strong>Created At:</strong>{" "}
+      {reservation.createdAt
+        ? new Date(reservation.createdAt).toLocaleString("fr-FR", { timeZone: "Africa/Tunis" })
+        : "N/A"}
+    </p>
   </div>
 );
 
