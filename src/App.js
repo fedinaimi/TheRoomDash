@@ -5,6 +5,7 @@ import PrivateRoute from './components/PrivateRoute';
 import PublicRoute from './components/PublicRoute';
 import Navbar from './components/Dashboard/Navbar';
 import { isAuthenticated } from './services/authService'; // Import isAuthenticated
+import PricesPage from './pages/PricesPage';
 
 // Lazy-loaded pages for better performance
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
@@ -68,6 +69,8 @@ const AppContent = () => {
           <Route path="reservations" element={<ReservationsPage />} /> {/* General Reservations */}
           <Route path="timeslots" element={<TimeSlotPage />} />
           <Route path="settings" element={<SettingsPage />} /> {/* Settings Page */}
+          <Route path="prices" element={<PricesPage />} />
+
         </Route>
 
         {/* Redirect unknown paths to login */}

@@ -18,6 +18,8 @@ const Sidebar = () => {
     { name: 'Chapters', path: '/dashboard/chapters', icon: FaFileAlt },
     { name: 'Time Slots', path: '/dashboard/timeslots', icon: FaHourglassStart },
     { name: 'Settings', path: '/dashboard/settings', icon: FaCog },
+    { name: 'Prices', path: '/dashboard/prices', icon: FaCog }, 
+
   ];
 
   // Menu items for subadmins
