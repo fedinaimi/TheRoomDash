@@ -1,19 +1,22 @@
 // src/pages/Dashboard.js
 import React from 'react';
+import { Outlet } from 'react-router-dom';
 import Sidebar from '../components/Dashboard/Sidebar';
 import Navbar from '../components/Dashboard/Navbar';
-import { Outlet } from 'react-router-dom';
 
 const Dashboard = () => {
   return (
     <div className="flex min-h-screen bg-gray-100">
+      {/* Fixed Sidebar */}
       <Sidebar />
 
-      <div className="flex-grow ml-64 md:ml-0 bg-gray-100">
+      {/* Main Content Area */}
+      <div className="flex-1 md:ml-64">
+        {/* Fixed Navbar at the top */}
         <Navbar />
-        <div className="p-6 mt-16">
-          
-          
+
+        {/* Content Padding */}
+        <div className="pt-16 p-4">
           <Outlet />
         </div>
       </div>
