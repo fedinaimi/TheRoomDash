@@ -19,8 +19,6 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
     image: null,
     video: null,
     scenarioId: '',
-    price: '', // New Field
-    remisePercentagePerPerson: '', // New Field
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false); // Loader state
@@ -51,8 +49,6 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
         image: chapter.image || null, // Existing image URL
         video: chapter.video || null, // Existing video URL
         scenarioId: chapter.scenario?._id || '',
-        price: chapter.price || '', // Populate if editing
-        remisePercentagePerPerson: chapter.remisePercentagePerPerson || '', // Populate if editing
       });
     }
   }, [chapter]);
@@ -68,9 +64,6 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
     if (!formData.difficulty) newErrors.difficulty = 'Difficulty is required';
     if (!formData.description) newErrors.description = 'Description is required';
     if (!formData.place) newErrors.place = 'Place is required';
-    if (formData.price === '' || formData.price === null) newErrors.price = 'Price is required';
-    if (formData.remisePercentagePerPerson === '' || formData.remisePercentagePerPerson === null)
-      newErrors.remisePercentagePerPerson = 'Remise Percentage is required';
 
     if (formData.minPlayerNumber && formData.maxPlayerNumber) {
       if (parseInt(formData.minPlayerNumber) > parseInt(formData.maxPlayerNumber)) {
@@ -82,21 +75,6 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
       if (formData.percentageOfSuccess < 0 || formData.percentageOfSuccess > 100) {
         newErrors.percentageOfSuccess = 'Percentage of success must be between 0 and 100';
       }
-    }
-
-    // Validate Price
-    if (formData.price !== '' && (isNaN(formData.price) || formData.price < 0)) {
-      newErrors.price = 'Price must be a non-negative number';
-    }
-
-    // Validate Remise Percentage
-    if (
-      formData.remisePercentagePerPerson !== '' &&
-      (isNaN(formData.remisePercentagePerPerson) ||
-        formData.remisePercentagePerPerson < 0 ||
-        formData.remisePercentagePerPerson > 100)
-    ) {
-      newErrors.remisePercentagePerPerson = 'Remise Percentage must be between 0 and 100';
     }
 
     setErrors(newErrors);
@@ -246,44 +224,6 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
           )}
         </div>
 
-        {/* Price */}
-        <div>
-          <label className="block text-gray-700 font-bold mb-2">Price</label>
-          <input
-            name="price"
-            type="number"
-            value={formData.price}
-            onChange={handleChange}
-            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${
-              errors.price ? 'border-red-500' : ''
-            }`}
-            placeholder="Enter price"
-            min="0"
-            step="0.01"
-          />
-          {errors.price && <p className="text-red-500 text-sm">{errors.price}</p>}
-        </div>
-
-        {/* Remise Percentage per Person */}
-        <div>
-          <label className="block text-gray-700 font-bold mb-2">Remise Percentage per Person</label>
-          <input
-            name="remisePercentagePerPerson"
-            type="number"
-            value={formData.remisePercentagePerPerson}
-            onChange={handleChange}
-            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 ${
-              errors.remisePercentagePerPerson ? 'border-red-500' : ''
-            }`}
-            placeholder="Enter remise percentage"
-            min="0"
-            max="100"
-          />
-          {errors.remisePercentagePerPerson && (
-            <p className="text-red-500 text-sm">{errors.remisePercentagePerPerson}</p>
-          )}
-        </div>
-
         {/* Time */}
         <div>
           <label className="block text-gray-700 font-bold mb-2">Time (minutes)</label>
@@ -372,7 +312,9 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
           {/* Display existing image if editing and no new image is uploaded */}
           {chapter && formData.image && typeof formData.image === 'string' && (
             <img
-              src={`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000'}${formData.image}`}
+              src={`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000'}${
+                formData.image
+              }`}
               alt="Chapter"
               className="mt-2 h-32 w-full object-cover rounded-md"
             />
@@ -400,7 +342,12 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
           {chapter && formData.video && typeof formData.video === 'string' && (
             <div className="mt-2 max-w-xs max-h-[150px] overflow-hidden rounded-md mx-auto">
               <video controls className="h-full w-full object-contain">
-                <source src={`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000'}${formData.video}`} type="video/mp4" />
+                <source
+                  src={`${
+                    process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000'
+                  }${formData.video}`}
+                  type="video/mp4"
+                />
               </video>
             </div>
           )}

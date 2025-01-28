@@ -146,8 +146,6 @@ const ChaptersPage = () => {
               <th className="px-4 py-2 border">Time</th>
               <th className="px-4 py-2 border">Difficulty</th>
               <th className="px-4 py-2 border">Success %</th>
-              <th className="px-4 py-2 border">Price</th> {/* New Column */}
-              <th className="px-4 py-2 border">Remise %</th> {/* New Column */}
               <th className="px-4 py-2 border">Actions</th>
             </tr>
           </thead>
@@ -161,8 +159,7 @@ const ChaptersPage = () => {
                 <td className="px-4 py-2 border">{chapter.time} mins</td>
                 <td className="px-4 py-2 border">{chapter.difficulty}</td>
                 <td className="px-4 py-2 border">{chapter.percentageOfSuccess}%</td>
-                <td className="px-4 py-2 border">{chapter.price} TND</td> {/* Display Price */}
-                <td className="px-4 py-2 border">{chapter.remisePercentagePerPerson}%</td> {/* Display Remise */}
+                
                 <td className="px-4 py-2 border flex space-x-2">
                   <LoaderButton
                     onClick={() => {
