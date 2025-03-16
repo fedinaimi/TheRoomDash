@@ -1,6 +1,6 @@
 // src/components/ChapterForm.js
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { getAllScenarios } from '../services/scenarioService';
 import LoaderButton from './LoaderButton';
 
@@ -21,7 +21,7 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
     scenarioId: '',
   });
   const [errors, setErrors] = useState({});
-  const [isLoading, setIsLoading] = useState(false); // Loader state
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     async function fetchScenarios() {
@@ -46,8 +46,8 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
         description: chapter.description || '',
         comment: chapter.comment || '',
         place: chapter.place || '',
-        image: chapter.image || null, // Existing image URL
-        video: chapter.video || null, // Existing video URL
+        image: chapter.image || null, // Existing image path or null
+        video: chapter.video || null, // Existing video path or null
         scenarioId: chapter.scenario?._id || '',
       });
     }
@@ -56,14 +56,30 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
   const validate = () => {
     const newErrors = {};
 
-    if (!formData.name) newErrors.name = 'Name is required';
-    if (!formData.scenarioId) newErrors.scenarioId = 'Scenario is required';
-    if (!formData.minPlayerNumber) newErrors.minPlayerNumber = 'Minimum players is required';
-    if (!formData.maxPlayerNumber) newErrors.maxPlayerNumber = 'Maximum players is required';
-    if (!formData.time) newErrors.time = 'Time is required';
-    if (!formData.difficulty) newErrors.difficulty = 'Difficulty is required';
-    if (!formData.description) newErrors.description = 'Description is required';
-    if (!formData.place) newErrors.place = 'Place is required';
+    if (!formData.name) {
+      newErrors.name = 'Name is required';
+    }
+    if (!formData.scenarioId) {
+      newErrors.scenarioId = 'Scenario is required';
+    }
+    if (!formData.minPlayerNumber) {
+      newErrors.minPlayerNumber = 'Minimum players is required';
+    }
+    if (!formData.maxPlayerNumber) {
+      newErrors.maxPlayerNumber = 'Maximum players is required';
+    }
+    if (!formData.time) {
+      newErrors.time = 'Time is required';
+    }
+    if (!formData.difficulty) {
+      newErrors.difficulty = 'Difficulty is required';
+    }
+    if (!formData.description) {
+      newErrors.description = 'Description is required';
+    }
+    if (!formData.place) {
+      newErrors.place = 'Place is required';
+    }
 
     if (formData.minPlayerNumber && formData.maxPlayerNumber) {
       if (parseInt(formData.minPlayerNumber) > parseInt(formData.maxPlayerNumber)) {
@@ -72,7 +88,8 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
     }
 
     if (formData.percentageOfSuccess) {
-      if (formData.percentageOfSuccess < 0 || formData.percentageOfSuccess > 100) {
+      const percentage = parseInt(formData.percentageOfSuccess, 10);
+      if (percentage < 0 || percentage > 100) {
         newErrors.percentageOfSuccess = 'Percentage of success must be between 0 and 100';
       }
     }
@@ -83,27 +100,37 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-    setErrors({ ...errors, [name]: '' }); // Clear the error for the specific field
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: '' })); // Clear the error for that field
   };
 
   const handleFileChange = (e, type) => {
     const file = e.target.files[0];
+    const maxSize = 25 * 1024 * 1024; // 25MB in bytes
+
     if (file) {
-      setFormData({ ...formData, [type]: file });
+      if (file.size > maxSize) {
+        setErrors((prevErrors) => ({
+          ...prevErrors,
+          [type]: 'File size must be less than 25MB',
+        }));
+      } else {
+        setFormData((prev) => ({ ...prev, [type]: file }));
+        setErrors((prevErrors) => ({ ...prevErrors, [type]: '' }));
+      }
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (validate()) {
-      setIsLoading(true); // Start loader
+      setIsLoading(true);
       try {
         // Prepare data to send
         const submissionData = { ...formData };
 
-        // If a new file is uploaded, it's already in the formData
-        // If not, and editing, ensure to send the existing file URL as a string
+        // If editing an existing chapter and no new file was chosen,
+        // preserve the existing image/video path from `chapter`
         if (chapter) {
           if (!submissionData.image) {
             submissionData.image = chapter.image;
@@ -113,12 +140,12 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
           }
         }
 
-        await onSubmit(submissionData); // Simulate submission
+        await onSubmit(submissionData);
       } catch (error) {
         console.error('Error submitting form:', error);
         alert('Failed to submit form. Please try again.');
       } finally {
-        setIsLoading(false); // Stop loader
+        setIsLoading(false);
       }
     }
   };
@@ -129,6 +156,7 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
         {chapter ? 'Edit Chapter' : 'Add Chapter'}
       </h2>
       <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        
         {/* Name */}
         <div>
           <label className="block text-gray-700 font-bold mb-2">Name</label>
@@ -301,6 +329,8 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             onChange={(e) => handleFileChange(e, 'image')}
             className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600"
           />
+          {errors.image && <p className="text-red-500 text-sm">{errors.image}</p>}
+          
           {/* Preview for new image upload */}
           {formData.image && formData.image instanceof File && (
             <img
@@ -309,12 +339,11 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
               className="mt-2 h-32 w-full object-cover rounded-md"
             />
           )}
+
           {/* Display existing image if editing and no new image is uploaded */}
           {chapter && formData.image && typeof formData.image === 'string' && (
             <img
-              src={`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000'}${
-                formData.image
-              }`}
+              src={`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000'}${formData.image}`}
               alt="Chapter"
               className="mt-2 h-32 w-full object-cover rounded-md"
             />
@@ -330,6 +359,8 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
             onChange={(e) => handleFileChange(e, 'video')}
             className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600"
           />
+          {errors.video && <p className="text-red-500 text-sm">{errors.video}</p>}
+          
           {/* Preview for new video upload */}
           {formData.video && formData.video instanceof File && (
             <div className="mt-2 max-w-xs max-h-[150px] overflow-hidden rounded-md mx-auto">
@@ -338,14 +369,13 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
               </video>
             </div>
           )}
+
           {/* Display existing video if editing and no new video is uploaded */}
           {chapter && formData.video && typeof formData.video === 'string' && (
             <div className="mt-2 max-w-xs max-h-[150px] overflow-hidden rounded-md mx-auto">
               <video controls className="h-full w-full object-contain">
                 <source
-                  src={`${
-                    process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000'
-                  }${formData.video}`}
+                  src={`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000'}${formData.video}`}
                   type="video/mp4"
                 />
               </video>
@@ -357,7 +387,7 @@ const ChapterForm = ({ onSubmit, onClose, chapter }) => {
         <div className="col-span-1 md:col-span-2 flex justify-end space-x-4">
           <LoaderButton
             onClick={onClose}
-            isLoading={false} // No loader for cancel button
+            isLoading={false} // Cancel button has no loader
             className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition duration-200"
           >
             Cancel
