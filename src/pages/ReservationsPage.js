@@ -1,30 +1,95 @@
 // src/components/ReservationsPage.js
+import React, { useEffect, useState } from "react";
+import { FaCheck, FaPlus, FaTimes, FaTrash } from "react-icons/fa";
+import { useParams } from "react-router-dom";
+import LoaderButton from "../components/LoaderButton";
+/**
+ * If you get "Workbook is not a constructor" errors in the browser,
+ * try importing from "exceljs/dist/exceljs.min.js" instead:
+ *   import ExcelJS from "exceljs/dist/exceljs.min.js";
+ */
+import ExcelJS from "exceljs/dist/exceljs.min.js";
+import { saveAs } from "file-saver";
 
-import React, { useState, useEffect } from "react";
 import {
-  getAllReservations,
-  updateReservationStatus,
+  createReservation,
   deleteReservation,
   fetchChapters,
   fetchTimeSlots,
-  createReservation,
+  getAllReservations,
+  updateReservationStatus,
 } from "../services/reservationService";
-import { fetchProfile } from "../services/userService"; // Service to fetch current user
-import { FaCheck, FaTimes, FaTrash, FaPlus } from "react-icons/fa"; // Added FaPlus for Add Reservation button
-import LoaderButton from "../components/LoaderButton"; // Reusable button with loading indicator
-import { useParams } from "react-router-dom"; // Import useParams
-import * as XLSX from 'xlsx';
-import { saveAs } from 'file-saver';
+import { fetchProfile } from "../services/userService";
+
+/** Helper: get weekday name in French. */
+const getDayName = (isoString) => {
+  try {
+    return new Date(isoString).toLocaleDateString("fr-FR", {
+      weekday: "long",
+    });
+  } catch {
+    return "";
+  }
+};
+
+/** Helper: format date/time in local FR-FR. */
+const toLocalTimeString = (isoString) => {
+  try {
+    return new Date(isoString).toLocaleString("fr-FR", {
+      timeZone: "Africa/Tunis",
+    });
+  } catch {
+    return "Invalid time";
+  }
+};
+
+/** Helper: format "Created At" in local FR-FR. */
+const formatCreatedAt = (isoString) => {
+  try {
+    return new Date(isoString).toLocaleString("fr-FR", {
+      timeZone: "Africa/Tunis",
+    });
+  } catch {
+    return "Invalid date";
+  }
+};
+
+/** Helper: Calculate price per person based on number of players */
+const calculatePricePerPerson = (players) => {
+  if (players >= 4) return 30;
+  if (players === 3) return 35;
+  return 40; // for 2 players
+};
+
+/** Helper: Calculate total price */
+const calculateTotalPrice = (players) => {
+  return calculatePricePerPerson(players) * players;
+};
+
+/** Group reservations by day (YYYY-MM-DD). */
+const groupReservationsByDay = (reservations) => {
+  const grouped = {};
+  for (const r of reservations) {
+    if (r.timeSlot) {
+      const dateKey = new Date(r.timeSlot.startTime).toISOString().split("T")[0];
+      if (!grouped[dateKey]) {
+        grouped[dateKey] = [];
+      }
+      grouped[dateKey].push(r);
+    }
+  }
+  return grouped;
+};
 
 const ReservationsPage = () => {
-  const { id: reservationIdFromRoute } = useParams(); // Get reservation ID from route
+  // ------------------- States & Variables -------------------
+  const { id: reservationIdFromRoute } = useParams();
   const [data, setData] = useState({
     reservations: [],
     approvedReservations: [],
     declinedReservations: [],
     deletedReservations: [],
   });
-
   const [currentUser, setCurrentUser] = useState(null);
   const [currentTable, setCurrentTable] = useState("reservations");
   const [loading, setLoading] = useState({});
@@ -32,23 +97,27 @@ const ReservationsPage = () => {
   const [confirmation, setConfirmation] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [reservationsPerPage] = useState(10);
+
+  // Filters
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState("");
-  const [createdAtFilter, setCreatedAtFilter] = useState(""); // New CreatedAt Filter
+  const [createdAtFilter, setCreatedAtFilter] = useState("");
   const [scenarioFilter, setScenarioFilter] = useState("");
-  const [languageFilter, setLanguageFilter] = useState(""); // New Language Filter
+  const [languageFilter, setLanguageFilter] = useState("");
 
+  // Bulk selection
   const [selectedReservations, setSelectedReservations] = useState([]);
   const [selectAll, setSelectAll] = useState(false);
-
   const [highlightedReservationId, setHighlightedReservationId] = useState(null);
 
-  // States for Add Reservation Modal
+  // Add Reservation Modal
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [chapters, setChapters] = useState([]);
   const [timeSlots, setTimeSlots] = useState({});
   const [selectedChapter, setSelectedChapter] = useState("");
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
   const [selectedTimeSlot, setSelectedTimeSlot] = useState("");
   const [addFormData, setAddFormData] = useState({
     name: "",
@@ -63,27 +132,26 @@ const ReservationsPage = () => {
   const [addFormErrorMessage, setAddFormErrorMessage] = useState("");
   const [addFormSuccessMessage, setAddFormSuccessMessage] = useState(false);
 
+  // ------------------- Fetching Data -------------------
   useEffect(() => {
     const fetchUserAndData = async () => {
       try {
         const user = await fetchProfile();
         setCurrentUser(user);
         await fetchAllReservations();
-        await loadChapters(); // Fetch chapters on mount
+        await loadChapters(); // For Add Reservation modal
       } catch (error) {
         console.error("Error:", error);
       }
     };
-
     fetchUserAndData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (reservationIdFromRoute) {
       setHighlightedReservationId(reservationIdFromRoute);
-      setCurrentTable("reservations"); // Ensure we're on the reservations table
-      setCurrentPage(1); // Reset to first page
+      setCurrentTable("reservations");
+      setCurrentPage(1);
     }
   }, [reservationIdFromRoute]);
 
@@ -98,26 +166,7 @@ const ReservationsPage = () => {
     }
   };
 
-  // Helper function to format timeSlot times
-  const toLocalTimeString = (isoString) => {
-    try {
-      return new Date(isoString).toLocaleString("fr-FR", { timeZone: "Africa/Tunis" }); // local time with specific locale and timezone
-    } catch (error) {
-      console.error("Error formatting time:", error);
-      return "Invalid time";
-    }
-  };
-
-  // Helper function to format createdAt
-  const formatCreatedAt = (isoString) => {
-    try {
-      return new Date(isoString).toLocaleString("fr-FR", { timeZone: "Africa/Tunis" });
-    } catch (error) {
-      console.error("Error formatting createdAt:", error);
-      return "Invalid date";
-    }
-  };
-
+  // ------------------- Update Reservation Status -------------------
   const handleUpdateStatus = async (reservationId, status, source) => {
     setLoading((prev) => ({ ...prev, [reservationId]: true }));
     try {
@@ -130,6 +179,7 @@ const ReservationsPage = () => {
     }
   };
 
+  // ------------------- Delete Reservation -------------------
   const handleDelete = async (reservationId, source) => {
     setLoading((prev) => ({ ...prev, [reservationId]: true }));
     try {
@@ -142,17 +192,14 @@ const ReservationsPage = () => {
     }
   };
 
+  // ------------------- Confirmation Modal -------------------
   const confirmAction = (actionType, payload) => {
-    setConfirmation({
-      actionType,
-      payload,
-    });
+    setConfirmation({ actionType, payload });
   };
 
   const executeConfirmationAction = async () => {
     const { actionType, payload } = confirmation;
     setPopupLoading(true);
-
     try {
       if (actionType === "updateStatus") {
         await handleUpdateStatus(payload._id, payload.status, currentTable);
@@ -182,30 +229,30 @@ const ReservationsPage = () => {
     setConfirmation(null);
   };
 
+  // ------------------- Filtering & Sorting -------------------
   const filteredReservations =
-    data[currentTable]?.filter((reservation) => {
+    (data[currentTable] || []).filter((reservation) => {
       const matchesSearchQuery =
         reservation.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         reservation.email?.toLowerCase().includes(searchQuery.toLowerCase());
-
       const matchesDateFilter = dateFilter
-        ? new Date(reservation.timeSlot.startTime).toISOString().split("T")[0] === dateFilter
+        ? new Date(reservation.timeSlot.startTime)
+            .toISOString()
+            .split("T")[0] === dateFilter
         : true;
-
       const matchesCreatedAtFilter = createdAtFilter
-        ? new Date(reservation.createdAt).toISOString().split("T")[0] === createdAtFilter
+        ? new Date(reservation.createdAt)
+            .toISOString()
+            .split("T")[0] === createdAtFilter
         : true;
-
       const matchesScenarioFilter = scenarioFilter
-        ? reservation.scenario?.name?.toLowerCase().includes(
-            scenarioFilter.toLowerCase()
-          )
+        ? reservation.scenario?.name
+            ?.toLowerCase()
+            .includes(scenarioFilter.toLowerCase())
         : true;
-
       const matchesLanguageFilter = languageFilter
         ? reservation.language?.toUpperCase() === languageFilter.toUpperCase()
         : true;
-
       return (
         matchesSearchQuery &&
         matchesDateFilter &&
@@ -215,13 +262,14 @@ const ReservationsPage = () => {
       );
     }) || [];
 
-  // Sort the filteredReservations by timeSlot.endTime descending (most recent passed first)
+  // Sort by endTime descending
   const sortedReservations = filteredReservations.sort((a, b) => {
     const aEnd = a.timeSlot ? new Date(a.timeSlot.endTime) : new Date(0);
     const bEnd = b.timeSlot ? new Date(b.timeSlot.endTime) : new Date(0);
-    return bEnd - aEnd; // Descending order
+    return bEnd - aEnd;
   });
 
+  // Pagination
   const indexOfLastReservation = currentPage * reservationsPerPage;
   const indexOfFirstReservation = indexOfLastReservation - reservationsPerPage;
   const currentReservations = sortedReservations.slice(
@@ -236,20 +284,26 @@ const ReservationsPage = () => {
     setSelectAll(false);
   };
 
+  // Determine user role
   const role = currentUser?.usertype === "subadmin" ? "subadmin" : "admin";
 
+  // Admin can do bulk actions (except in deletedReservations)
   const canBulkAction =
     role === "admin" &&
     currentTable !== "deletedReservations" &&
     sortedReservations.length > 0;
 
+  // Subadmin can only act on "reservations"; Admin can act on all except "deletedReservations"
   const canActOnIndividual =
     (role === "admin" && currentTable !== "deletedReservations") ||
     (role === "subadmin" && currentTable === "reservations");
 
+  // ------------------- Checkbox Selection (Bulk) -------------------
   const handleSelectReservation = (id) => {
     setSelectedReservations((prev) =>
-      prev.includes(id) ? prev.filter((resId) => resId !== id) : [...prev, id]
+      prev.includes(id)
+        ? prev.filter((resId) => resId !== id)
+        : [...prev, id]
     );
   };
 
@@ -264,13 +318,9 @@ const ReservationsPage = () => {
   };
 
   const getBulkReservations = () => {
-    if (selectedReservations.length > 0) {
-      return sortedReservations.filter((r) =>
-        selectedReservations.includes(r._id)
-      );
-    } else {
-      return sortedReservations;
-    }
+    return selectedReservations.length > 0
+      ? sortedReservations.filter((r) => selectedReservations.includes(r._id))
+      : sortedReservations;
   };
 
   const handleBulkAction = (action) => {
@@ -284,67 +334,19 @@ const ReservationsPage = () => {
     }
   };
 
-  // CSV Export Logic
-  const exportToXLSX = (reservations, filename) => {
-    // Define the headers
-    const headers = [
-      "Name",
-      "Email",
-      "Phone",
-      "Players",
-      "Scenario",
-      "Chapter",
-      "Time Slot Start",
-      "Time Slot End",
-      "Language",
-      "Status",
-      "Created At", // Include Created At in export
-    ];
-
-    // Map reservation data to rows
-    const rows = reservations.map((r) => ({
-      Name: r.name,
-      Email: r.email,
-      Phone: r.phone,
-      Players: r.people,
-      Scenario: r.scenario?.name || "",
-      Chapter: r.chapter?.name || "",
-      "Time Slot Start": r.timeSlot ? new Date(r.timeSlot.startTime).toLocaleString("fr-FR", { timeZone: "Africa/Tunis" }) : "",
-      "Time Slot End": r.timeSlot ? new Date(r.timeSlot.endTime).toLocaleString("fr-FR", { timeZone: "Africa/Tunis" }) : "",
-      Language: r.language ? r.language.toUpperCase() : "",
-      Status: r.status || "",
-      "Created At": r.createdAt ? new Date(r.createdAt).toLocaleString("fr-FR", { timeZone: "Africa/Tunis" }) : "",
-    }));
-
-    // Create a worksheet
-    const worksheet = XLSX.utils.json_to_sheet(rows, { header: headers });
-
-    // Create a new workbook and append the worksheet
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Reservations");
-
-    // Generate buffer
-    const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-
-    // Create a blob from the buffer
-    const data = new Blob([excelBuffer], { type: "application/octet-stream" });
-
-    // Trigger file download
-    saveAs(data, filename);
-  };
-
-  // Helper functions to get date ranges
+  // ------------------- Date-based Filtering Helpers for Export -------------------
   const getTodayFilter = () => {
     const today = new Date().toISOString().split("T")[0];
     return sortedReservations.filter(
-      (r) => new Date(r.timeSlot.startTime).toISOString().split("T")[0] === today
+      (r) =>
+        new Date(r.timeSlot.startTime).toISOString().split("T")[0] === today
     );
   };
 
   const getWeekFilter = () => {
     const now = new Date();
     const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday as start of week
+    startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday-based
     startOfWeek.setHours(0, 0, 0, 0);
     const endOfWeek = new Date(startOfWeek);
     endOfWeek.setDate(startOfWeek.getDate() + 7);
@@ -366,31 +368,186 @@ const ReservationsPage = () => {
     });
   };
 
-  // Color Coding Reservations by Status
-  const getRowColorClass = (reservation) => {
-    if (currentTable === "approvedReservations") return "bg-green-100";
-    if (currentTable === "declinedReservations") return "bg-gray-100";
-    if (currentTable === "reservations")
-      return reservation.status === "pending" ? "bg-white" : "";
-    // Add more conditions as needed
-    return "";
+  const getYearFilter = () => {
+    const now = new Date();
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+    const endOfYear = new Date(now.getFullYear() + 1, 0, 1);
+
+    return sortedReservations.filter((r) => {
+      const startTime = r.timeSlot ? new Date(r.timeSlot.startTime) : null;
+      return startTime && startTime >= startOfYear && startTime < endOfYear;
+    });
   };
 
-  // Scroll to and highlight reservation if highlightedReservationId is present
-  useEffect(() => {
-    if (highlightedReservationId) {
-      const reservationRow = document.getElementById(`reservation-${highlightedReservationId}`);
-      if (reservationRow) {
-        reservationRow.scrollIntoView({ behavior: "smooth", block: "center" });
-        reservationRow.classList.add("bg-yellow-200"); // Highlight with yellow background
-        setTimeout(() => {
-          reservationRow.classList.remove("bg-yellow-200");
-        }, 3000); // Remove highlight after 3 seconds
-      }
-    }
-  }, [highlightedReservationId, currentReservations]);
+  // ------------------- Excel Export (All Days on One Sheet) -------------------
+  const exportFormattedReservations = async (reservations, filename) => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Emploi du Temps");
 
-  // Fetch chapters for Add Reservation
+    // Initialize columns first with specific widths
+    worksheet.columns = [
+      { header: 'Time Slot', key: 'timeSlot', width: 15 },
+      { header: 'Chapter', key: 'chapter', width: 20 },
+    ];
+
+    // Set default row height and text wrapping
+    worksheet.properties.defaultRowHeight = 18;
+    worksheet.columns.forEach((col) => {
+      col.alignment = { wrapText: true, vertical: "top" };
+    });
+
+    // 1) Group all reservations by day
+    const groupedByDay = groupReservationsByDay(reservations);
+
+    // 2) Sort day keys (e.g. "2025-01-02", "2025-01-03", etc.)
+    const sortedDays = Object.keys(groupedByDay).sort();
+
+    // We'll keep track of our current row in the sheet
+    let currentRowNumber = 1;
+
+    for (const dayKey of sortedDays) {
+      const dayReservations = groupedByDay[dayKey];
+      if (dayReservations.length === 0) continue;
+
+      // Determine the weekday name, e.g. "jeudi"
+      const sampleRes = dayReservations[0];
+      const dayName = sampleRes?.timeSlot
+        ? getDayName(sampleRes.timeSlot.startTime)
+        : "";
+
+      // Insert a header row for this day, e.g. "Day: 2025-01-02 - jeudi"
+      const dayHeaderRow = worksheet.getRow(currentRowNumber);
+      dayHeaderRow.getCell(1).value = `Day: ${dayKey} - ${dayName}`;
+      // Some styling
+      dayHeaderRow.height = 25;
+      dayHeaderRow.font = { bold: true, size: 14, color: { argb: "FFFFFFFF" } };
+      dayHeaderRow.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FF008080" }, // Teal-like color
+      };
+      // Merge the first few columns so it's more visible
+      worksheet.mergeCells(currentRowNumber, 1, currentRowNumber, 5);
+
+      currentRowNumber++;
+
+      // Blank row for spacing
+      currentRowNumber++;
+
+      // Collect unique chapters and times
+      const chaptersSet = new Set();
+      const timesSet = new Set();
+
+      dayReservations.forEach((r) => {
+        if (r.chapter?.name) {
+          chaptersSet.add(r.chapter.name);
+        }
+        if (r.timeSlot) {
+          const timeStr = new Date(r.timeSlot.startTime).toLocaleTimeString("fr-FR", {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+          timesSet.add(timeStr);
+        }
+      });
+
+      const chaptersArray = Array.from(chaptersSet).sort();
+      const timesArray = Array.from(timesSet).sort();
+
+      // Create header row for the day: "Time Slot" + each chapter
+      const headerRow = worksheet.getRow(currentRowNumber);
+      headerRow.getCell(1).value = "Time Slot";
+      // Fill columns
+      for (let i = 0; i < chaptersArray.length; i++) {
+        headerRow.getCell(i + 2).value = chaptersArray[i];
+      }
+      // Style the header row
+      headerRow.height = 20;
+      headerRow.font = { bold: true, color: { argb: "FF000000" } };
+      headerRow.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFE0E0E0" },
+      };
+
+      // Add thin borders for each cell in header
+      for (let i = 1; i <= chaptersArray.length + 1; i++) {
+        const cell = headerRow.getCell(i);
+        cell.border = {
+          top: { style: "thin" },
+          left: { style: "thin" },
+          bottom: { style: "thin" },
+          right: { style: "thin" },
+        };
+        cell.alignment = { wrapText: true, vertical: "middle" };
+      }
+
+      currentRowNumber++;
+
+      // Now for each time, create a row
+      timesArray.forEach((time) => {
+        const row = worksheet.getRow(currentRowNumber);
+        row.getCell(1).value = time; // first column = time
+
+        // For each chapter, fill the intersection
+        chaptersArray.forEach((chapterName, idx) => {
+          // Find all reservations that match this time + chapter
+          const cellReservations = dayReservations.filter((res) => {
+            if (!res.chapter?.name) return false;
+            const resTime = new Date(res.timeSlot.startTime).toLocaleTimeString(
+              "fr-FR",
+              {
+                hour: "2-digit",
+                minute: "2-digit",
+              }
+            );
+            return res.chapter.name === chapterName && resTime === time;
+          });
+
+          let cellText = "";
+          cellReservations.forEach((res) => {
+            cellText += `Name: ${res.name}\nEmail: ${res.email}\nPhone: ${res.phone}\nPlayers: ${res.people}\nPrice: ${calculatePricePerPerson(res.people)} TND/person\nTotal: ${calculateTotalPrice(res.people)} TND\n\n`;
+          });
+
+          // Put in cell
+          const cell = row.getCell(idx + 2);
+          cell.value = cellText.trim();
+          // Wrap text & add border
+          cell.alignment = { wrapText: true, vertical: "top" };
+          cell.border = {
+            top: { style: "thin" },
+            left: { style: "thin" },
+            bottom: { style: "thin" },
+            right: { style: "thin" },
+          };
+        });
+
+        // Also style the first cell (time cell)
+        const firstCell = row.getCell(1);
+        firstCell.border = {
+          top: { style: "thin" },
+          left: { style: "thin" },
+          bottom: { style: "thin" },
+          right: { style: "thin" },
+        };
+        firstCell.alignment = { wrapText: true, vertical: "middle" };
+
+        currentRowNumber++;
+      });
+
+      // Blank row after each day's table
+      currentRowNumber++;
+    }
+
+    // Finally, generate the Excel and prompt download
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    saveAs(blob, filename);
+  };
+
+  // ------------------- Add Reservation Functions -------------------
   const loadChapters = async () => {
     try {
       const fetchedChapters = await fetchChapters();
@@ -400,27 +557,23 @@ const ReservationsPage = () => {
     }
   };
 
-  // Fetch time slots based on selected chapter and date
   const loadTimeSlotsForAddReservation = async (chapterId, date) => {
     try {
       const fetchedTimeSlots = await fetchTimeSlots(chapterId, date);
       setTimeSlots((prev) => ({
         ...prev,
-        [chapterId]: fetchedTimeSlots.filter(slot => slot.status === "available"),
+        [chapterId]: fetchedTimeSlots.filter(
+          (slot) => slot.status === "available"
+        ),
       }));
     } catch (error) {
       console.error("Error fetching time slots:", error);
-      setTimeSlots((prev) => ({
-        ...prev,
-        [chapterId]: [],
-      }));
+      setTimeSlots((prev) => ({ ...prev, [chapterId]: [] }));
     }
   };
 
-  // Handle Add Reservation Form Input Changes
   const handleAddFormChange = (e) => {
     const { name, value } = e.target;
-
     if (name === "selectedTimeSlot") {
       setSelectedTimeSlot(value);
     } else if (name === "selectedChapter") {
@@ -439,7 +592,26 @@ const ReservationsPage = () => {
     }
   };
 
-  // Handle Add Reservation Form Submission
+  const validateAddForm = () => {
+    const newErrors = {};
+    if (!addFormData.name.trim()) newErrors.name = "Name is required.";
+    if (!addFormData.email.trim()) {
+      newErrors.email = "Email is required.";
+    } else if (!/\S+@\S+\.\S+/.test(addFormData.email)) {
+      newErrors.email = "Invalid email address.";
+    }
+    if (!addFormData.phone.trim()) {
+      newErrors.phone = "Phone number is required.";
+    } else if (!/^\d+$/.test(addFormData.phone)) {
+      newErrors.phone = "Phone number must contain only digits.";
+    }
+    if (!selectedChapter) newErrors.selectedChapter = "Chapter is required.";
+    if (!selectedTimeSlot) newErrors.selectedTimeSlot = "Time slot is required.";
+    if (!addFormData.people || addFormData.people < 1)
+      newErrors.people = "Number of people must be at least 1.";
+    return newErrors;
+  };
+
   const handleAddFormSubmit = async (e) => {
     e.preventDefault();
     setAddFormLoading(true);
@@ -456,7 +628,8 @@ const ReservationsPage = () => {
 
     try {
       const reservationData = {
-        scenario: chapters.find(c => c._id === selectedChapter)?.scenario?._id || "",
+        scenario:
+          chapters.find((c) => c._id === selectedChapter)?.scenario?._id || "",
         chapter: selectedChapter,
         timeSlot: selectedTimeSlot,
         name: addFormData.name,
@@ -484,33 +657,28 @@ const ReservationsPage = () => {
     }
   };
 
-  // Form validation
-  const validateAddForm = () => {
-    const newErrors = {};
-    if (!addFormData.name.trim()) newErrors.name = "Name is required.";
-    if (!addFormData.email.trim()) {
-      newErrors.email = "Email is required.";
-    } else if (!/\S+@\S+\.\S+/.test(addFormData.email)) {
-      newErrors.email = "Invalid email address.";
+  // ------------------- Scroll to Highlighted Reservation -------------------
+  useEffect(() => {
+    if (highlightedReservationId) {
+      const reservationRow = document.getElementById(
+        `reservation-${highlightedReservationId}`
+      );
+      if (reservationRow) {
+        reservationRow.scrollIntoView({ behavior: "smooth", block: "center" });
+        reservationRow.classList.add("bg-yellow-200");
+        setTimeout(() => {
+          reservationRow.classList.remove("bg-yellow-200");
+        }, 3000);
+      }
     }
-    if (!addFormData.phone.trim()) {
-      newErrors.phone = "Phone number is required.";
-    } else if (!/^\d+$/.test(addFormData.phone)) {
-      newErrors.phone = "Phone number must contain only digits.";
-    }
-    if (!selectedChapter) newErrors.selectedChapter = "Chapter is required.";
-    if (!selectedTimeSlot) newErrors.selectedTimeSlot = "Time slot is required.";
-    if (!addFormData.people || addFormData.people < 1)
-      newErrors.people = "Number of people must be at least 1.";
-    // Add more validations as needed
-    return newErrors;
-  };
+  }, [highlightedReservationId, currentReservations]);
 
+  // ------------------- JSX Rendering -------------------
   return (
     <div className="p-4">
       <h1 className="text-2xl font-bold mb-6">Reservations</h1>
 
-      {/* Add Reservation Button (Visible only to Admins) */}
+      {/* Add Reservation Button (Admins Only) */}
       {role === "admin" && (
         <div className="mb-6 flex justify-end">
           <button
@@ -534,7 +702,7 @@ const ReservationsPage = () => {
                 setCurrentPage(1);
                 setSelectedReservations([]);
                 setSelectAll(false);
-                setHighlightedReservationId(null); // Reset highlight
+                setHighlightedReservationId(null);
               }}
               className={`px-4 py-2 rounded-md ${
                 currentTable === table
@@ -556,9 +724,11 @@ const ReservationsPage = () => {
 
       {/* Filters */}
       <div className="mb-4 grid grid-cols-1 md:grid-cols-5 gap-4">
-        {/* Search Filter */}
         <div>
-          <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="search"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Search by Name or Email
           </label>
           <input
@@ -570,10 +740,11 @@ const ReservationsPage = () => {
             className="w-full px-4 py-2 border border-gray-300 rounded-md"
           />
         </div>
-
-        {/* Time Slot Start Date Filter */}
         <div>
-          <label htmlFor="dateFilter" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="dateFilter"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Filter by Time Slot Start Date
           </label>
           <input
@@ -584,10 +755,11 @@ const ReservationsPage = () => {
             className="w-full px-4 py-2 border border-gray-300 rounded-md"
           />
         </div>
-
-        {/* Created At Date Filter */}
         <div>
-          <label htmlFor="createdAtFilter" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="createdAtFilter"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Filter by Creation Date
           </label>
           <input
@@ -598,10 +770,11 @@ const ReservationsPage = () => {
             className="w-full px-4 py-2 border border-gray-300 rounded-md"
           />
         </div>
-
-        {/* Scenario Filter */}
         <div>
-          <label htmlFor="scenarioFilter" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="scenarioFilter"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Filter by Scenario
           </label>
           <input
@@ -613,10 +786,11 @@ const ReservationsPage = () => {
             className="w-full px-4 py-2 border border-gray-300 rounded-md"
           />
         </div>
-
-        {/* Language Filter */}
         <div>
-          <label htmlFor="languageFilter" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="languageFilter"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Filter by Language
           </label>
           <select
@@ -628,7 +802,6 @@ const ReservationsPage = () => {
             <option value="">All Languages</option>
             <option value="EN">English</option>
             <option value="FR">French</option>
-            {/* Add more languages as needed */}
           </select>
         </div>
       </div>
@@ -636,26 +809,40 @@ const ReservationsPage = () => {
       {/* Export Buttons */}
       <div className="mb-4 flex space-x-4">
         <button
-          onClick={() => exportToXLSX(getTodayFilter(), "reservations_today.xlsx")}
+          onClick={() =>
+            exportFormattedReservations(getTodayFilter(), "reservations_today.xlsx")
+          }
           className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
         >
-          Export Today's Reservations (XLSX)
+          Export Today
         </button>
         <button
-          onClick={() => exportToXLSX(getWeekFilter(), "reservations_week.xlsx")}
+          onClick={() =>
+            exportFormattedReservations(getWeekFilter(), "reservations_week.xlsx")
+          }
           className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
         >
-          Export This Week (XLSX)
+          Export This Week
         </button>
         <button
-          onClick={() => exportToXLSX(getMonthFilter(), "reservations_month.xlsx")}
+          onClick={() =>
+            exportFormattedReservations(getMonthFilter(), "reservations_month.xlsx")
+          }
           className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
         >
-          Export This Month (XLSX)
+          Export This Month
+        </button>
+        <button
+          onClick={() =>
+            exportFormattedReservations(getYearFilter(), "reservations_year.xlsx")
+          }
+          className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+        >
+          Export This Year
         </button>
       </div>
 
-      {/* Bulk Actions for Admin */}
+      {/* Bulk Actions (Admins Only) */}
       {canBulkAction && (
         <div className="mb-4 flex space-x-4">
           <button
@@ -697,12 +884,12 @@ const ReservationsPage = () => {
               <th className="px-4 py-2 border">Email</th>
               <th className="px-4 py-2 border">Phone</th>
               <th className="px-4 py-2 border">Players</th>
+              <th className="px-4 py-2 border">Price</th>
               <th className="px-4 py-2 border">Scenario</th>
               <th className="px-4 py-2 border">Chapter</th>
               <th className="px-4 py-2 border">Time Slot</th>
-              {/* New Language Column Header */}
               <th className="px-4 py-2 border">Language</th>
-              <th className="px-4 py-2 border">Created At</th> {/* Updated Header */}
+              <th className="px-4 py-2 border">Created At</th>
               <th className="px-4 py-2 border">Actions</th>
             </tr>
           </thead>
@@ -710,7 +897,7 @@ const ReservationsPage = () => {
             {currentReservations.length === 0 && (
               <tr>
                 <td
-                  colSpan={canBulkAction ? 11 : 10} // Updated to include the new Language and Created At columns
+                  colSpan={canBulkAction ? 11 : 10}
                   className="p-4 text-gray-500 text-sm text-center"
                 >
                   No reservations found.
@@ -719,13 +906,12 @@ const ReservationsPage = () => {
             )}
             {currentReservations.map((reservation) => {
               const isSelected = selectedReservations.includes(reservation._id);
-              const rowColorClass = getRowColorClass(reservation);
               const isHighlighted = reservation._id === highlightedReservationId;
               return (
                 <tr
                   key={reservation._id}
                   id={`reservation-${reservation._id}`}
-                  className={`hover:bg-gray-100 ${rowColorClass} ${
+                  className={`hover:bg-gray-100 ${
                     isHighlighted ? "bg-yellow-200" : ""
                   }`}
                 >
@@ -734,7 +920,9 @@ const ReservationsPage = () => {
                       <input
                         type="checkbox"
                         checked={isSelected}
-                        onChange={() => handleSelectReservation(reservation._id)}
+                        onChange={() =>
+                          handleSelectReservation(reservation._id)
+                        }
                       />
                     </td>
                   )}
@@ -742,6 +930,11 @@ const ReservationsPage = () => {
                   <td className="px-4 py-2 border">{reservation.email}</td>
                   <td className="px-4 py-2 border">{reservation.phone}</td>
                   <td className="px-4 py-2 border">{reservation.people}</td>
+                  <td className="px-4 py-2 border">
+                    {calculatePricePerPerson(reservation.people)} TND/person
+                    <br />
+                    Total: {calculateTotalPrice(reservation.people)} TND
+                  </td>
                   <td className="px-4 py-2 border">
                     {reservation.scenario?.name || "N/A"}
                   </td>
@@ -752,16 +945,16 @@ const ReservationsPage = () => {
                     {reservation.timeSlot
                       ? `${toLocalTimeString(
                           reservation.timeSlot.startTime
-                        )} - ${toLocalTimeString(reservation.timeSlot.endTime)}`
+                        )} - ${toLocalTimeString(
+                          reservation.timeSlot.endTime
+                        )}`
                       : "No time slot"}
                   </td>
-                  {/* New Language Data Cell */}
                   <td className="px-4 py-2 border">
                     {reservation.language
                       ? reservation.language.toUpperCase()
                       : "N/A"}
                   </td>
-                  {/* Formatted Created At */}
                   <td className="px-4 py-2 border">
                     {reservation.createdAt
                       ? formatCreatedAt(reservation.createdAt)
@@ -770,10 +963,8 @@ const ReservationsPage = () => {
                   <td className="px-4 py-2 border flex space-x-2">
                     {canActOnIndividual ? (
                       <>
-                        {/* Admin Actions */}
                         {role === "admin" && (
                           <>
-                            {/* Approve Button for Pending Reservations */}
                             {currentTable === "reservations" && (
                               <LoaderButton
                                 onClick={() =>
@@ -789,8 +980,6 @@ const ReservationsPage = () => {
                                 <FaCheck />
                               </LoaderButton>
                             )}
-
-                            {/* Decline Button for Pending and Approved Reservations */}
                             {(currentTable === "reservations" ||
                               currentTable === "approvedReservations") && (
                               <LoaderButton
@@ -807,8 +996,6 @@ const ReservationsPage = () => {
                                 <FaTimes />
                               </LoaderButton>
                             )}
-
-                            {/* Approve Button for Declined Reservations */}
                             {currentTable === "declinedReservations" && (
                               <LoaderButton
                                 onClick={() =>
@@ -824,11 +1011,11 @@ const ReservationsPage = () => {
                                 <FaCheck />
                               </LoaderButton>
                             )}
-
-                            {/* Delete Button */}
                             {currentTable !== "deletedReservations" && (
                               <LoaderButton
-                                onClick={() => confirmAction("delete", reservation)}
+                                onClick={() =>
+                                  confirmAction("delete", reservation)
+                                }
                                 isLoading={loading[reservation._id]}
                                 className="bg-red-500 text-white px-2 py-1 rounded-md hover:bg-red-600"
                                 title="Delete Reservation"
@@ -838,11 +1025,8 @@ const ReservationsPage = () => {
                             )}
                           </>
                         )}
-
-                        {/* Subadmin Actions */}
-                        {role === "subadmin" && currentTable === "reservations" && (
-                          <>
-                            {/* Accept Button (Equivalent to Approve) */}
+                        {role === "subadmin" &&
+                          currentTable === "reservations" && (
                             <LoaderButton
                               onClick={() =>
                                 confirmAction("updateStatus", {
@@ -856,8 +1040,7 @@ const ReservationsPage = () => {
                             >
                               <FaCheck />
                             </LoaderButton>
-                          </>
-                        )}
+                          )}
                       </>
                     ) : (
                       <span className="text-gray-500">No actions</span>
@@ -906,7 +1089,6 @@ const ReservationsPage = () => {
                 />
               </>
             )}
-
             {confirmation.actionType === "updateStatus" && (
               <>
                 <h4 className="text-lg font-bold mb-4">
@@ -922,7 +1104,6 @@ const ReservationsPage = () => {
                 />
               </>
             )}
-
             {confirmation.actionType === "bulkAction" && (
               <>
                 <h4 className="text-lg font-bold mb-4">
@@ -937,7 +1118,6 @@ const ReservationsPage = () => {
                 <p className="mb-4">This action cannot be undone.</p>
               </>
             )}
-
             <div className="flex justify-end gap-4">
               <button
                 onClick={cancelConfirmationAction}
@@ -963,8 +1143,12 @@ const ReservationsPage = () => {
           <div className="bg-white p-6 rounded-md shadow-lg w-96 max-h-screen overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">Add New Reservation</h2>
             <form onSubmit={handleAddFormSubmit}>
+              {/* --- Name Field --- */}
               <div className="mb-4">
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  htmlFor="name"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
                   Name:
                 </label>
                 <input
@@ -980,12 +1164,17 @@ const ReservationsPage = () => {
                   required
                 />
                 {addFormErrors.name && (
-                  <p className="text-red-500 text-sm mt-1">{addFormErrors.name}</p>
+                  <p className="text-red-500 text-sm mt-1">
+                    {addFormErrors.name}
+                  </p>
                 )}
               </div>
-
+              {/* --- Email Field --- */}
               <div className="mb-4">
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  htmlFor="email"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
                   Email:
                 </label>
                 <input
@@ -1001,12 +1190,17 @@ const ReservationsPage = () => {
                   required
                 />
                 {addFormErrors.email && (
-                  <p className="text-red-500 text-sm mt-1">{addFormErrors.email}</p>
+                  <p className="text-red-500 text-sm mt-1">
+                    {addFormErrors.email}
+                  </p>
                 )}
               </div>
-
+              {/* --- Phone Field --- */}
               <div className="mb-4">
-                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  htmlFor="phone"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
                   Phone:
                 </label>
                 <div className="flex">
@@ -1022,7 +1216,7 @@ const ReservationsPage = () => {
                     <option value="+216">+216</option>
                     <option value="+1">+1</option>
                     <option value="+44">+44</option>
-                    {/* Add more country codes as needed */}
+                    {/* add more as needed */}
                   </select>
                   <input
                     type="tel"
@@ -1038,12 +1232,17 @@ const ReservationsPage = () => {
                   />
                 </div>
                 {addFormErrors.phone && (
-                  <p className="text-red-500 text-sm mt-1">{addFormErrors.phone}</p>
+                  <p className="text-red-500 text-sm mt-1">
+                    {addFormErrors.phone}
+                  </p>
                 )}
               </div>
-
+              {/* --- People Field --- */}
               <div className="mb-4">
-                <label htmlFor="people" className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  htmlFor="people"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
                   Number of People:
                 </label>
                 <input
@@ -1060,12 +1259,17 @@ const ReservationsPage = () => {
                   required
                 />
                 {addFormErrors.people && (
-                  <p className="text-red-500 text-sm mt-1">{addFormErrors.people}</p>
+                  <p className="text-red-500 text-sm mt-1">
+                    {addFormErrors.people}
+                  </p>
                 )}
               </div>
-
+              {/* --- Language Field --- */}
               <div className="mb-4">
-                <label htmlFor="language" className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  htmlFor="language"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
                   Language:
                 </label>
                 <select
@@ -1077,12 +1281,14 @@ const ReservationsPage = () => {
                 >
                   <option value="fr">Français</option>
                   <option value="en">English</option>
-                  {/* Add more languages as needed */}
                 </select>
               </div>
-
+              {/* --- Chapter Field --- */}
               <div className="mb-4">
-                <label htmlFor="selectedChapter" className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  htmlFor="selectedChapter"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
                   Chapter:
                 </label>
                 <select
@@ -1100,7 +1306,9 @@ const ReservationsPage = () => {
                     }
                   }}
                   className={`w-full px-3 py-2 border ${
-                    addFormErrors.selectedChapter ? "border-red-500" : "border-gray-300"
+                    addFormErrors.selectedChapter
+                      ? "border-red-500"
+                      : "border-gray-300"
                   } rounded-md`}
                   required
                 >
@@ -1117,9 +1325,12 @@ const ReservationsPage = () => {
                   </p>
                 )}
               </div>
-
+              {/* --- Date Field --- */}
               <div className="mb-4">
-                <label htmlFor="selectedDate" className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  htmlFor="selectedDate"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
                   Date:
                 </label>
                 <input
@@ -1129,7 +1340,9 @@ const ReservationsPage = () => {
                   value={selectedDate}
                   onChange={handleAddFormChange}
                   className={`w-full px-3 py-2 border ${
-                    addFormErrors.selectedDate ? "border-red-500" : "border-gray-300"
+                    addFormErrors.selectedDate
+                      ? "border-red-500"
+                      : "border-gray-300"
                   } rounded-md`}
                   required
                 />
@@ -1139,9 +1352,12 @@ const ReservationsPage = () => {
                   </p>
                 )}
               </div>
-
+              {/* --- Time Slot Field --- */}
               <div className="mb-4">
-                <label htmlFor="selectedTimeSlot" className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  htmlFor="selectedTimeSlot"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
                   Time Slot:
                 </label>
                 <select
@@ -1150,7 +1366,9 @@ const ReservationsPage = () => {
                   value={selectedTimeSlot}
                   onChange={handleAddFormChange}
                   className={`w-full px-3 py-2 border ${
-                    addFormErrors.selectedTimeSlot ? "border-red-500" : "border-gray-300"
+                    addFormErrors.selectedTimeSlot
+                      ? "border-red-500"
+                      : "border-gray-300"
                   } rounded-md`}
                   required
                   disabled={!selectedChapter || !selectedDate}
@@ -1178,7 +1396,7 @@ const ReservationsPage = () => {
                 )}
               </div>
 
-              {/* Success and Error Messages */}
+              {/* --- Success / Error Messages --- */}
               {addFormSuccessMessage && (
                 <div className="mb-4 p-2 bg-green-100 text-green-700 rounded-md">
                   Reservation created successfully!
@@ -1190,6 +1408,7 @@ const ReservationsPage = () => {
                 </div>
               )}
 
+              {/* --- Submit & Cancel Buttons --- */}
               <div className="flex justify-end space-x-4">
                 <button
                   type="button"
@@ -1203,9 +1422,7 @@ const ReservationsPage = () => {
                   className="flex items-center px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
                   disabled={addFormLoading}
                 >
-                  {addFormLoading ? (
-                    <span className="loader mr-2"></span> // Ensure you have the loader CSS
-                  ) : null}
+                  {addFormLoading && <span className="loader mr-2"></span>}
                   Confirm
                 </button>
               </div>
@@ -1213,76 +1430,11 @@ const ReservationsPage = () => {
           </div>
         </div>
       )}
-
-      {/* Reservation Details Component */}
-      {confirmation && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-md shadow-lg w-96">
-            {confirmation.actionType === "delete" && (
-              <>
-                <h4 className="text-lg font-bold mb-4">
-                  Are you sure you want to delete this reservation?
-                </h4>
-                <ReservationDetails
-                  reservation={confirmation.payload}
-                  toLocalTimeString={toLocalTimeString}
-                />
-              </>
-            )}
-
-            {confirmation.actionType === "updateStatus" && (
-              <>
-                <h4 className="text-lg font-bold mb-4">
-                  Are you sure you want to{" "}
-                  {confirmation.payload.status === "approved"
-                    ? "approve"
-                    : "decline"}{" "}
-                  this reservation?
-                </h4>
-                <ReservationDetails
-                  reservation={confirmation.payload}
-                  toLocalTimeString={toLocalTimeString}
-                />
-              </>
-            )}
-
-            {confirmation.actionType === "bulkAction" && (
-              <>
-                <h4 className="text-lg font-bold mb-4">
-                  Are you sure you want to{" "}
-                  {confirmation.payload.deleteAction
-                    ? "delete"
-                    : confirmation.payload.status === "approved"
-                    ? "approve"
-                    : "decline"}{" "}
-                  {confirmation.payload.reservations.length} reservation(s)?
-                </h4>
-                <p className="mb-4">This action cannot be undone.</p>
-              </>
-            )}
-
-            <div className="flex justify-end gap-4">
-              <button
-                onClick={cancelConfirmationAction}
-                className="px-4 py-2 bg-gray-500 text-white rounded-md"
-              >
-                Cancel
-              </button>
-              <LoaderButton
-                onClick={executeConfirmationAction}
-                isLoading={popupLoading}
-                className="px-4 py-2 bg-green-500 text-white rounded-md"
-              >
-                Confirm
-              </LoaderButton>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
 
+/** Confirmation Modal: Reservation details. */
 const ReservationDetails = ({ reservation, toLocalTimeString }) => (
   <div className="mb-4">
     <p>
@@ -1298,6 +1450,11 @@ const ReservationDetails = ({ reservation, toLocalTimeString }) => (
       <strong>People:</strong> {reservation.people}
     </p>
     <p>
+      <strong>Price:</strong> {calculatePricePerPerson(reservation.people)} TND per person
+      <br />
+      <strong>Total:</strong> {calculateTotalPrice(reservation.people)} TND
+    </p>
+    <p>
       <strong>Scenario:</strong> {reservation.scenario?.name || "N/A"}
     </p>
     <p>
@@ -1311,9 +1468,9 @@ const ReservationDetails = ({ reservation, toLocalTimeString }) => (
           )}`
         : "No time slot"}
     </p>
-    {/* New Language Field */}
     <p>
-      <strong>Language:</strong> {reservation.language ? reservation.language.toUpperCase() : "N/A"}
+      <strong>Language:</strong>{" "}
+      {reservation.language ? reservation.language.toUpperCase() : "N/A"}
     </p>
     {reservation.status && (
       <p>
@@ -1323,7 +1480,9 @@ const ReservationDetails = ({ reservation, toLocalTimeString }) => (
     <p>
       <strong>Created At:</strong>{" "}
       {reservation.createdAt
-        ? new Date(reservation.createdAt).toLocaleString("fr-FR", { timeZone: "Africa/Tunis" })
+        ? new Date(reservation.createdAt).toLocaleString("fr-FR", {
+            timeZone: "Africa/Tunis",
+          })
         : "N/A"}
     </p>
   </div>
